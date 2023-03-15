@@ -1,0 +1,20 @@
+\section{Cálculo del producto escalar.}
+
+Partimos del ejemplo 4 del primer seminario para implementar un programa
+que nos permita realizar el cálculo del producto escalar. Para ello seguimos
+los siguientes pasos, comprobando en cada uno de ellos que todo funciona según esperamos,
+para diferente número de tareas y para diferente tamaño.
+
+\begin{enumerate}
+    \item Aisla el código cuya función es realizar la sumatoria de un vector en una función llamada `job`.
+    \item Haz que el proceso MASTER participe en el cálculo, dividiendo la carga de trabajo entre todos los procesos.
+    \item Haz que la recepción de los resultados de los workers se reciba de forma asíncrona, de forma que el MASTER pueda ir trabajando a la vez sin que esto suponga que los workers tengan que esperar a que termine este.
+    \item Aisla el código del MASTER que se comunica con los workers en una función `scalarProduct`.
+    \item Modifica la función job, worker y la que acabamos de crear de forma que haga el producto escalar.
+\end{enumerate}
+
+El ejecutable resultante tiene la misma interfaz que la del ejemplo 4.
+Si, por ejemplo, decidimos un tamaño de 5 realizará la multiplicación $(0,1,2,3,4) \cdot (0,1,2,3,4)$.
+Entendemos que la entrada de datos personalizados se escapa de los objetivos de la entrega.
+
+Para compilar y ejecutar el ejercicio utilizamos \texttt{make run}.
