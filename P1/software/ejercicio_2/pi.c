@@ -54,26 +54,30 @@ int main(int argc, char* argv[]){
 		if(steps<=0){
 			printf("El número de iteraciones debe ser un entero positivo!\n");
 		}else{
-            printf("num_iter,leibniz_cput,leibniz_wallt,rectangles_cput,rectangles_wallt\n");
+            printf("num_iter,leibniz_cput,leibniz_wallt,rectangles_cput,rectangles_wallt,leibniz_pi,rectangles_pi\n");
             for (int i = 0; i < steps; i++) {
                 int iter = (i+1) * ((double)INT_MAX / steps);
                 double cput1 = get_cpu_time();
                 double wallt1 = get_wall_time();
+				double pi1 = 0.0;
                 for (int i = 0; i < 5; i++) {
-                    volatile double pi = piLeibniz(iter);
+                    pi1 += piLeibniz(iter);
                 }
                 cput1 = (get_cpu_time() - cput1) / 5;
                 wallt1 = (get_wall_time() - wallt1) / 5;
+				pi1 /= 5;
     
                 double cput2 = get_cpu_time();
                 double wallt2 = get_wall_time();
+				double pi2 = 0.0;
                 for (int i = 0; i < 5; i++) {
-                    volatile double pi = piRectangles(iter);
+                    pi2 += piRectangles(iter);
                 }
                 cput2 = (get_cpu_time() - cput2) / 5;
                 wallt2 = (get_wall_time() - wallt2) / 5;
+				pi2 /= 5;
 
-                printf("%d,%lf,%lf,%lf,%lf\n", iter, cput1, wallt1, cput2, wallt2);
+                printf("%d,%lf,%lf,%lf,%lf,%lf,%lf\n", iter, cput1, wallt1, cput2, wallt2, pi1, pi2);
             }
         }
 	}
