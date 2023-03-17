@@ -100,7 +100,7 @@ int main(int argc, char* argv[]){
 		printf("Uso: ./prog esfuerzo\n");
 	}else{
 		int steps = atoi(argv[1]);
-		if(steps<=0){
+		if(steps<=0 && world_rank == MASTER_RANK){
             printf("num_iter,num_procs,leibniz_cput,leibniz_wallt,rectangles_cput,rectangles_wallt,leibniz_pi,rectangles_pi\n");
 		}else{
 			struct resultado leibniz = evalua(piLeibniz, steps, world_rank, num_procs);
