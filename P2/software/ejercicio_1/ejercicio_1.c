@@ -4,6 +4,7 @@
  */
 
 #include <mpi.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -12,6 +13,8 @@
 #define RANK_TOUPPER    1
 #define RANK_REALSUM    2
 #define RANK_INTSUM     3
+
+#define TAG_TOUPPER     1
 
 static void assert_numProcs_is_4(int numProcs, int rank) {
     if (numProcs != 4) {
@@ -25,7 +28,7 @@ static void assert_numProcs_is_4(int numProcs, int rank) {
 }
 
 static void kill_em_uwu(void) {
-    fprintf(stdout, "KILL EM ALL!!! >>>> w <<<<.\n");
+    fprintf(stdout, "KILL EM ALL!!! O w O :knife:.\n");
     MPI_Abort(MPI_COMM_WORLD, 0);
     MPI_Finalize();
     exit(0);
@@ -35,6 +38,54 @@ static void wipe_stdin_line(void) {
     char input = 0;
     while (input != '\n') {
         input = getchar();
+    }
+}
+
+static void toupper_worker(void) {
+    char s[512];
+    while (true) {
+        MPI_Status status;
+        MPI_Recv(s, 512, MPI_CHAR, RANK_MASTER, TAG_TOUPPER, MPI_COMM_WORLD, &status);
+        s[511] = '\0';
+        for (int i = 0; i < 512 && s[i] != '\0'; i++) {
+            s[i] = toupper(s[i]);
+        }
+        MPI_Send(s, status._ucount, MPI_CHAR, RANK_MASTER, TAG_TOUPPER, MPI_COMM_WORLD);
+    }
+}
+
+static void toupper_stub(char s[512], unsigned count) {
+    count = count > 512 ? 512 : count;
+    MPI_Send(s, count, MPI_CHAR, RANK_TOUPPER, TAG_TOUPPER, MPI_COMM_WORLD);
+    MPI_Recv(s, count, MPI_CHAR, RANK_TOUPPER, TAG_TOUPPER, MPI_COMM_WORLD, 0);
+}
+
+static void handle_option_1(void) {
+    int chars_read = 0;
+    char sentence[512];
+
+    scanf("%511[^\n]%n", sentence, &chars_read);
+    if (chars_read == 0) {
+        fprintf(stderr, "None read. Nothing to uppercase.\n");
+    }
+    else {
+        if (chars_read == 511) {
+            wipe_stdin_line();
+            sentence[511] = '\0';
+            fprintf(stderr, " **** Warning. Sentence truncated to the first 511 characters. **** \n");
+        }
+        toupper_stub(sentence, chars_read+1);
+        printf("%s\n", sentence);
+    }
+}
+
+static void realsum_worker(void) {
+    while (true) {
+    }
+}
+
+static void intsum_worker(void) {
+    while (true) {
     }
 }
 
@@ -48,7 +99,8 @@ static void master_routine(void) {
                 kill_em_uwu();
                 break;
             case '1':
-                fprintf(stderr, "Not implemented.\n"); 
+                wipe_stdin_line();
+                handle_option_1();
                 break;
             case '2':
                 fprintf(stderr, "Not implemented.\n"); 
@@ -60,25 +112,10 @@ static void master_routine(void) {
                 fprintf(stderr, "Not implemented.\n"); 
                 break;
             default:
-                fprintf(stderr, "Expected a decimal number in the range [0,4].\n");
                 wipe_stdin_line();
+                fprintf(stderr, "Expected a decimal number in the range [0,4].\n");
                 break;
         }
-    }
-}
-
-static void toupper_worker(void) {
-    while (true) {
-    }
-}
-
-static void realsum_worker(void) {
-    while (true) {
-    }
-}
-
-static void intsum_worker(void) {
-    while (true) {
     }
 }
 
