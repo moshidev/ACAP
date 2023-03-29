@@ -1,0 +1,41 @@
+\section{Comunicación entre procesos MPI.}
+En este ejercicio se nos pide hacer un programa con distintas funcionalidades,
+de forma que interaccione con el usuario para preguntarle qué funcionalidad quiere
+ejecutar.
+
+Vamos identificando sub-problemas y resolvemos secuencialmente:
+\begin{enumerate}
+    \item Decide la estructura de la solución.
+    \item No permite ejecutar si no se ha invocado el programa con cuatro procesos.
+    \item Haz que cada proceso ejecute su rutina correspondiente.
+    \item Permite que el usuario pueda elegir una opción de entre las posibles que se nos solicitan (entero en el rango [0,4]).
+    \item Gestiona los posibles errores correspondientes a la entrada.
+    \item Implementa la función cero (finalizar) como un \texttt{MPI\_Abort}.
+    \item Para la función uno, pasar a mayúsculas una cadena de texto:
+    \begin{enumerate}
+        \item Permite al usuario introducir una cadena de texto.
+        \item Gestiona errores para la entrada de texto.
+        \item Crea un stub para capitalizar una cadena de texto el cual invoque el manejador de la función uno.
+        \item Implementa el trabajador toupper.
+        \item Comunica la rutina del stub con el trabajador toupper.
+    \end{enumerate}
+    \item Para la función dos, calcular la suma y su cuadrado dada una lista de números reales:
+    \begin{enumerate}
+        \item Define una estructura que almacena el resultado de la operación.
+        \item Implementa el trabajador realsumroot, el stub y el handler.
+        \item Imprime el resultado con formato.
+    \end{enumerate}
+    \item Para la función tres, calcular la suma de los caracteres de una cadena de texto:
+    \begin{enumerate}
+        \item Implementa el trabajador intsum, el stub y el handler.
+    \end{enumerate}
+    \item Permite al trabajador toupper recibir cadenas de texto de longitud variable.
+    \item Crea una interfaz de texto para que el usuario tenga información de lo que se está ejecutando y del estado en que se cuentra.
+    \item Implementa la función cero como un mensaje que se envía a todos los procesos para apagarlos.
+    \item Implementa la función cuatro, realizar consecutivamente las funciones 1-3.
+\end{enumerate}
+
+Adecuamos la paralelización de los procesos a la naturaleza de la entrada del programa, tamaño de los datos, número de procesos preestablecido, etc. Si las necesidades fuesen otras, adaptaríamos el código
+a estas. Mientras que se pueda, primamos la simplicidad.
+
+Podemos ejecutar este ejercicio navegando hasta el directorio asociado y ejecutando \texttt{make run}.
