@@ -19,6 +19,7 @@
 #define TAG_TOUPPER         1
 #define TAG_REALSUMROOT     2
 #define TAG_INTSUM          3
+#define TAG_SHUTDOWN        4
 
 static void assert_numProcs_is_4(int numProcs, int rank) {
     if (numProcs != 4) {
@@ -33,9 +34,10 @@ static void assert_numProcs_is_4(int numProcs, int rank) {
 
 static void kill_em_uwu(void) {
     fprintf(stdout, "KILL EM ALL!!! O w O :knife:.\n");
-    MPI_Abort(MPI_COMM_WORLD, 0);
-    MPI_Finalize();
-    exit(0);
+    int sankyu = 39;
+    MPI_Send(&sankyu, 1, MPI_INT, RANK_TOUPPER, TAG_SHUTDOWN, MPI_COMM_WORLD);
+    MPI_Send(&sankyu, 1, MPI_INT, RANK_REALSUMROOT, TAG_SHUTDOWN, MPI_COMM_WORLD);
+    MPI_Send(&sankyu, 1, MPI_INT, RANK_INTSUM, TAG_SHUTDOWN, MPI_COMM_WORLD);
 }
 
 static void wipe_stdin_line(void) {
@@ -50,7 +52,10 @@ static void toupper_worker(void) {
     while (true) {
         MPI_Status status;
         int count;
-        MPI_Probe(RANK_MASTER, TAG_TOUPPER, MPI_COMM_WORLD, &status);
+        MPI_Probe(RANK_MASTER, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        if (status.MPI_TAG == TAG_SHUTDOWN) {
+            break;
+        }
         MPI_Get_count(&status, MPI_CHAR, &count);
         MPI_Alloc_mem(count*sizeof(char), MPI_INFO_NULL, &s);
         MPI_Recv(s, count, MPI_CHAR, RANK_MASTER, TAG_TOUPPER, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -74,7 +79,7 @@ static void handle_option_1(void) {
     char sentence[512];
 
     wipe_stdin_line();
-    fprintf(stdout, "Texto a poner en mayúsculas: ");
+    fprintf(stdout, "The text to be uppercased: ");
     fflush(stdout);
     scanf("%511[^\n]%n", sentence, &chars_read);
     if (chars_read == 0) {
@@ -101,7 +106,10 @@ static void realsumroot_worker(void) {
     while (true) {
         MPI_Status status;
         int count;
-        MPI_Probe(RANK_MASTER, TAG_REALSUMROOT, MPI_COMM_WORLD, &status);
+        MPI_Probe(RANK_MASTER, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        if (status.MPI_TAG == TAG_SHUTDOWN) {
+            break;
+        }
         MPI_Get_count(&status, MPI_DOUBLE, &count);
         MPI_Alloc_mem(count*sizeof(double), MPI_INFO_NULL, &sum_list);
         MPI_Recv(sum_list, count, MPI_DOUBLE, RANK_MASTER, TAG_REALSUMROOT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -129,7 +137,7 @@ static struct realsumroot realsumroot_stub(const double real_list[], size_t leng
 
 static void handle_option_2(void) {
     const double real_list[] = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1};
-    printf("Números reales a sumar: {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1}\n");
+    printf("Real numbers to be summed up: {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1}\n");
     const struct realsumroot res = realsumroot_stub(real_list, sizeof(real_list)/sizeof(double));
     printf("summation,sqrt_of_summation\n%.46f,%.46f\n", res.summation, res.sqrt_of_summation);
 }
@@ -139,7 +147,10 @@ static void intsum_worker(void) {
     while (true) {
         MPI_Status status;
         int count;
-        MPI_Probe(RANK_MASTER, TAG_INTSUM, MPI_COMM_WORLD, &status);
+        MPI_Probe(RANK_MASTER, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        if (status.MPI_TAG == TAG_SHUTDOWN) {
+            break;
+        }
         MPI_Get_count(&status, MPI_CHAR, &count);
         MPI_Alloc_mem(count*sizeof(char), MPI_INFO_NULL, &text);
         MPI_Recv(text, count, MPI_CHAR, RANK_MASTER, TAG_INTSUM, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -165,7 +176,7 @@ static int intsum_stub(const char* c_str, size_t c_str_len) {
 
 static void handle_option_3(void) {
     const char text[] = "Entrando en funcionalidad 3.";
-    printf("Texto del que calcular la suma de sus caracteres: %s\n", text);
+    printf("Text from which to calculate the sum of its characters: %s\n", text);
     printf("summation\n%d\n", intsum_stub(text, sizeof(text)/sizeof(char)));
 }
 
@@ -176,13 +187,18 @@ static void handle_option_4(void) {
 }
 
 static void master_routine(void) {
-    while (true) {
+    const char help_text[] = "Input a number between 0 (quit), 1 (uppercase), 2 (realsumroot), 3 (intsum), 4 (do everything).";
+    bool alive = true;
+    printf("%s\n", help_text);
+    while (alive) {
         char input = getchar();
         switch (input) {
             case '\n':
+                printf("%s\n", help_text);
                 break;
             case '0':
                 kill_em_uwu();
+                alive = false;  // ... any last words?
                 break;
             case '1':
                 handle_option_1();
