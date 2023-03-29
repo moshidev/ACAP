@@ -18,6 +18,7 @@
 
 #define TAG_TOUPPER         1
 #define TAG_REALSUMROOT     2
+#define TAG_INTSUM          3
 
 static void assert_numProcs_is_4(int numProcs, int rank) {
     if (numProcs != 4) {
@@ -83,20 +84,20 @@ static void handle_option_1(void) {
 }
 
 struct realsumroot {
-    double summatory;
-    double sqrt_of_summatory;
+    double summation;
+    double sqrt_of_summation;
 };
 
 static void realsumroot_worker(void) {
     double* sum_list = 0;
     while (true) {
-        double results[2] = {0.0};
         MPI_Status status;
         int count;
         MPI_Probe(RANK_MASTER, TAG_REALSUMROOT, MPI_COMM_WORLD, &status);
         MPI_Get_count(&status, MPI_DOUBLE, &count);
         MPI_Alloc_mem(count*sizeof(double), MPI_INFO_NULL, &sum_list);
         MPI_Recv(sum_list, count, MPI_DOUBLE, RANK_MASTER, TAG_REALSUMROOT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        double results[2] = {0.0};
         for (size_t i = 0; i < count; i++) {
             results[0] += sum_list[i];
         }
@@ -112,8 +113,8 @@ static struct realsumroot realsumroot_stub(const double real_list[], size_t leng
     MPI_Send(real_list, length, MPI_DOUBLE, RANK_REALSUMROOT, TAG_REALSUMROOT, MPI_COMM_WORLD);
     MPI_Recv(recv, 2, MPI_DOUBLE, RANK_REALSUMROOT, TAG_REALSUMROOT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     struct realsumroot res = {
-        .summatory = recv[0],
-        .sqrt_of_summatory = recv[1],
+        .summation = recv[0],
+        .sqrt_of_summation = recv[1],
     };
     return res;
 }
@@ -121,12 +122,41 @@ static struct realsumroot realsumroot_stub(const double real_list[], size_t leng
 static void handle_option_2(void) {
     const double real_list[] = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1};
     const struct realsumroot res = realsumroot_stub(real_list, sizeof(real_list)/sizeof(double));
-    printf("summatory,sqrt_of_summatory\n%.46f,%.46f\n", res.summatory, res.sqrt_of_summatory);
+    printf("summation,sqrt_of_summation\n%.46f,%.46f\n", res.summation, res.sqrt_of_summation);
 }
 
 static void intsum_worker(void) {
+    char* text = 0;
     while (true) {
+        MPI_Status status;
+        int count;
+        MPI_Probe(RANK_MASTER, TAG_INTSUM, MPI_COMM_WORLD, &status);
+        MPI_Get_count(&status, MPI_CHAR, &count);
+        MPI_Alloc_mem(count*sizeof(char), MPI_INFO_NULL, &text);
+        MPI_Recv(text, count, MPI_CHAR, RANK_MASTER, TAG_INTSUM, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        printf("%s\n", text);
+        int sum = 0;
+        char* c_str = text;
+        while (*c_str != '\0') {
+            sum += *c_str;
+            c_str++;
+        }
+        MPI_Send(&sum, 1, MPI_INT, RANK_MASTER, TAG_INTSUM, MPI_COMM_WORLD);
+        MPI_Free_mem(text);
+        text = 0;
     }
+}
+
+static int intsum_stub(const char* c_str, size_t c_str_len) {
+    int res;
+    MPI_Send(c_str, c_str_len, MPI_CHAR, RANK_INTSUM, TAG_INTSUM, MPI_COMM_WORLD);
+    MPI_Recv(&res, 1, MPI_INT, RANK_INTSUM, TAG_INTSUM, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    return res;
+}
+
+static void handle_option_3(void) {
+    const char text[] = "Entrando en funcionalidad 3.";
+    printf("summation\n%d\n", intsum_stub(text, sizeof(text)/sizeof(char)));
 }
 
 static void master_routine(void) {
@@ -146,7 +176,7 @@ static void master_routine(void) {
                 handle_option_2();
                 break;
             case '3':
-                fprintf(stderr, "Not implemented.\n"); 
+                handle_option_3(); 
                 break;
             case '4':
                 fprintf(stderr, "Not implemented.\n"); 
