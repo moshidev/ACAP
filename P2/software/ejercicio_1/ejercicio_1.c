@@ -46,28 +46,36 @@ static void wipe_stdin_line(void) {
 }
 
 static void toupper_worker(void) {
-    char s[512];
+    char* s = 0;
     while (true) {
         MPI_Status status;
-        MPI_Recv(s, 512, MPI_CHAR, RANK_MASTER, TAG_TOUPPER, MPI_COMM_WORLD, &status);
-        s[511] = '\0';
-        for (int i = 0; i < 512 && s[i] != '\0'; i++) {
+        int count;
+        MPI_Probe(RANK_MASTER, TAG_TOUPPER, MPI_COMM_WORLD, &status);
+        MPI_Get_count(&status, MPI_CHAR, &count);
+        MPI_Alloc_mem(count*sizeof(char), MPI_INFO_NULL, &s);
+        MPI_Recv(s, count, MPI_CHAR, RANK_MASTER, TAG_TOUPPER, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        for (int i = 0; s[i] != '\0'; i++) {
             s[i] = toupper(s[i]);
         }
-        MPI_Send(s, status._ucount, MPI_CHAR, RANK_MASTER, TAG_TOUPPER, MPI_COMM_WORLD);
+        MPI_Send(s, count, MPI_CHAR, RANK_MASTER, TAG_TOUPPER, MPI_COMM_WORLD);
+        MPI_Free_mem(s);
+        s = 0;
     }
 }
 
 static void toupper_stub(char s[512], unsigned count) {
     count = count > 512 ? 512 : count;
     MPI_Send(s, count, MPI_CHAR, RANK_TOUPPER, TAG_TOUPPER, MPI_COMM_WORLD);
-    MPI_Recv(s, count, MPI_CHAR, RANK_TOUPPER, TAG_TOUPPER, MPI_COMM_WORLD, 0);
+    MPI_Recv(s, count, MPI_CHAR, RANK_TOUPPER, TAG_TOUPPER, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 }
 
 static void handle_option_1(void) {
     int chars_read = 0;
     char sentence[512];
 
+    wipe_stdin_line();
+    fprintf(stdout, "Texto a poner en mayúsculas: ");
+    fflush(stdout);
     scanf("%511[^\n]%n", sentence, &chars_read);
     if (chars_read == 0) {
         fprintf(stderr, "None read. Nothing to uppercase.\n");
@@ -121,6 +129,7 @@ static struct realsumroot realsumroot_stub(const double real_list[], size_t leng
 
 static void handle_option_2(void) {
     const double real_list[] = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1};
+    printf("Números reales a sumar: {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1}\n");
     const struct realsumroot res = realsumroot_stub(real_list, sizeof(real_list)/sizeof(double));
     printf("summation,sqrt_of_summation\n%.46f,%.46f\n", res.summation, res.sqrt_of_summation);
 }
@@ -156,7 +165,14 @@ static int intsum_stub(const char* c_str, size_t c_str_len) {
 
 static void handle_option_3(void) {
     const char text[] = "Entrando en funcionalidad 3.";
+    printf("Texto del que calcular la suma de sus caracteres: %s\n", text);
     printf("summation\n%d\n", intsum_stub(text, sizeof(text)/sizeof(char)));
+}
+
+static void handle_option_4(void) {
+    handle_option_1();
+    handle_option_2();
+    handle_option_3();
 }
 
 static void master_routine(void) {
@@ -169,7 +185,6 @@ static void master_routine(void) {
                 kill_em_uwu();
                 break;
             case '1':
-                wipe_stdin_line();
                 handle_option_1();
                 break;
             case '2':
@@ -179,7 +194,7 @@ static void master_routine(void) {
                 handle_option_3(); 
                 break;
             case '4':
-                fprintf(stderr, "Not implemented.\n"); 
+                handle_option_4();
                 break;
             default:
                 wipe_stdin_line();
