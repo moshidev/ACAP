@@ -4,17 +4,20 @@
  */
 
 #include <mpi.h>
+#include <math.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define RANK_MASTER     0
-#define RANK_TOUPPER    1
-#define RANK_REALSUM    2
-#define RANK_INTSUM     3
+#define RANK_MASTER         0
+#define RANK_TOUPPER        1
+#define RANK_REALSUMROOT    2
+#define RANK_INTSUM         3
 
-#define TAG_TOUPPER     1
+#define TAG_TOUPPER         1
+#define TAG_REALSUMROOT     2
 
 static void assert_numProcs_is_4(int numProcs, int rank) {
     if (numProcs != 4) {
@@ -79,9 +82,46 @@ static void handle_option_1(void) {
     }
 }
 
-static void realsum_worker(void) {
+struct realsumroot {
+    double summatory;
+    double sqrt_of_summatory;
+};
+
+static void realsumroot_worker(void) {
+    double* sum_list = 0;
     while (true) {
+        double results[2] = {0.0};
+        MPI_Status status;
+        int count;
+        MPI_Probe(RANK_MASTER, TAG_REALSUMROOT, MPI_COMM_WORLD, &status);
+        MPI_Get_count(&status, MPI_DOUBLE, &count);
+        MPI_Alloc_mem(count*sizeof(double), MPI_INFO_NULL, &sum_list);
+        MPI_Recv(sum_list, count, MPI_DOUBLE, RANK_MASTER, TAG_REALSUMROOT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        for (size_t i = 0; i < count; i++) {
+            results[0] += sum_list[i];
+        }
+        results[1] = sqrt(results[0]);
+        MPI_Send(results, 2, MPI_DOUBLE, RANK_MASTER, TAG_REALSUMROOT, MPI_COMM_WORLD);
+        MPI_Free_mem(sum_list);
+        sum_list = 0;
     }
+}
+
+static struct realsumroot realsumroot_stub(const double real_list[], size_t length) {
+    double recv[2];
+    MPI_Send(real_list, length, MPI_DOUBLE, RANK_REALSUMROOT, TAG_REALSUMROOT, MPI_COMM_WORLD);
+    MPI_Recv(recv, 2, MPI_DOUBLE, RANK_REALSUMROOT, TAG_REALSUMROOT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    struct realsumroot res = {
+        .summatory = recv[0],
+        .sqrt_of_summatory = recv[1],
+    };
+    return res;
+}
+
+static void handle_option_2(void) {
+    const double real_list[] = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1};
+    const struct realsumroot res = realsumroot_stub(real_list, sizeof(real_list)/sizeof(double));
+    printf("summatory,sqrt_of_summatory\n%.46f,%.46f\n", res.summatory, res.sqrt_of_summatory);
 }
 
 static void intsum_worker(void) {
@@ -103,7 +143,7 @@ static void master_routine(void) {
                 handle_option_1();
                 break;
             case '2':
-                fprintf(stderr, "Not implemented.\n"); 
+                handle_option_2();
                 break;
             case '3':
                 fprintf(stderr, "Not implemented.\n"); 
@@ -133,8 +173,8 @@ int main(int argc, char* argv[]) {
         case RANK_TOUPPER:
             toupper_worker();
             break;
-        case RANK_REALSUM:
-            realsum_worker();
+        case RANK_REALSUMROOT:
+            realsumroot_worker();
             break;
         case RANK_INTSUM:
             intsum_worker();
