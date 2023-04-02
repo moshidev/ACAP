@@ -65,8 +65,13 @@ void convolucion(unsigned char** Original, int** nucleo, unsigned char** Salida,
 int main(int argc, char *argv[]){
   int Largo, Alto;
   int i, j;
+
+  if (argc != 3) {
+    fprintf(stderr, "ERROR: Uso: ./%s [.pgm a difuminar] [.pgm donde escribir la salida]", argv[0]);
+    return 1;
+  }
   
-  unsigned char** Original = pgmread("lena_original.pgm", &Largo, &Alto);
+  unsigned char** Original = pgmread(argv[1], &Largo, &Alto);
   unsigned char** Salida   = (unsigned char**)GetMem2D(Largo, Alto, sizeof(unsigned char));
 
   int** nucleo = (int**) GetMem2D(3, 3, sizeof(int));
@@ -77,7 +82,7 @@ int main(int argc, char *argv[]){
 
   convolucion(Original, nucleo, Salida, Largo, Alto);
 
-  pgmwrite(Salida, "lena_procesada.pgm", Largo, Alto);
+  pgmwrite(Salida, argv[2], Largo, Alto);
 
   Free2D((void**) nucleo, 3);
 
