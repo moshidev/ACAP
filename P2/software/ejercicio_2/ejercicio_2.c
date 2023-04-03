@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,12 +33,46 @@ void convolucion(unsigned char** Original, int** nucleo, unsigned char** Salida,
   }
 }
 
+struct img_size {
+    uint64_t rows;
+    uint64_t cols;
+};
+
 static void convolucion_paralelizada(unsigned char** orig, int** kern, unsigned char** dest, size_t cols, size_t rows) {
-    int rank;
+    int rank, nprocs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+
+    struct img_size img_size;
+    int** lkern;
+    MPI_Alloc_mem(3*3*sizeof(int), MPI_INFO_NULL, &lkern);
     if (rank == RANK_MASTER) {
-        convolucion(orig, kern, dest, cols, rows);
+        img_size.rows = rows;
+        img_size.cols = cols;
+        memcpy(lkern, kern, 3*3*sizeof(int));
     }
+    MPI_Bcast(&img_size, 2, MPI_UINT64_T, RANK_MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(lkern, 3*3, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    rows = img_size.rows;
+    cols = img_size.cols;
+    size_t rows_per_proc = rows / nprocs;
+
+    unsigned char* lorig = 0;
+    MPI_Alloc_mem(rows_per_proc*cols*sizeof(unsigned char), MPI_INFO_NULL, &lorig);
+    MPI_Scatter(rank == RANK_MASTER ? orig[0] : 0, rows_per_proc*cols, MPI_UNSIGNED_CHAR, lorig, rows_per_proc*cols, MPI_UNSIGNED_CHAR, RANK_MASTER, MPI_COMM_WORLD);
+
+    unsigned char* ldest;
+    MPI_Alloc_mem(rows_per_proc*cols*sizeof(unsigned char), MPI_INFO_NULL, &ldest);
+    //convolucion(lorig, lkern, ldest, cols, rows_per_proc);
+    memcpy(ldest, lorig, sizeof(unsigned char)*rows_per_proc*cols);
+
+    MPI_Gather(ldest, rows_per_proc*cols, MPI_UNSIGNED_CHAR, rank == RANK_MASTER ? dest[0] : 0, rows_per_proc*cols, MPI_UNSIGNED_CHAR, RANK_MASTER, MPI_COMM_WORLD);
+
+    MPI_Free_mem(lorig);
+    MPI_Free_mem(lkern);
+    MPI_Free_mem(ldest);
 }
 
 int main(int argc, char *argv[]){
@@ -45,7 +80,7 @@ int main(int argc, char *argv[]){
     int i, j;
 
     if (argc != 3) {
-        fprintf(stderr, "ERROR: Uso: ./%s [.pgm a difuminar] [.pgm donde escribir la salida]", argv[0]);
+        fprintf(stderr, "ERROR: Uso: ./%s [.pgm a difuminar] [.pgm donde escribir la salida]\n", argv[0]);
         return 1;
     }
 
