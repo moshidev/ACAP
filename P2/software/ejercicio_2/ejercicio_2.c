@@ -8,6 +8,12 @@
 
 #define RANK_MASTER     0
 
+static const int ridge_kernel_3[3][3] = {
+    [0] = {-1, -1, -1},
+    [1] = {-1, +1, -1},
+    [2] = {-1, -1, -1},
+};
+
 struct img_size {
     uint64_t rows;
     uint64_t cols;
@@ -23,31 +29,42 @@ struct kernel {
     int side_len;
 };
 
-void convolucion(const struct img_channel* in, const struct kernel* kern, struct img_channel* out) {
-    const int (*kernd)[kern->side_len] = kern->data;
-    int k = 0;
+static int kernel_sum(const struct kernel* kern) {
+    const int (*kernd)[kern->side_len] = (int (*)[kern->side_len])kern->data;
+    int sum = 0;
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-            k = k + kernd[i][j];
+            sum = sum + kernd[i][j];
         }
     }
+    return sum;
+}
 
-  uint8_t (*ind)[in->len.cols] = in->data;
-  uint8_t (*outd)[out->len.cols] = out->data;
-  for (int x = 1; x < in->len.cols-1; x++){
-    for (int y = 1; y < in->len.rows-1; y++){
-      int suma = 0;
-      for (int i = 0; i < 3; i++){
-        for (int j = 0; j < 3; j++){
-            suma = suma + ind[(y-1)+j][(x-1)+i] * kernd[i][j];
+static int weight_entry(int y, int x, const struct img_channel* src, const struct kernel* kern) {
+    const int (*kernd)[kern->side_len] = (int (*)[kern->side_len])kern->data;
+    const uint8_t (*srcd)[src->len.cols] = (uint8_t (*)[kern->side_len])src->data;
+    int suma = 0;
+    for (int i = 0; i < kern->side_len; i++){
+        for (int j = 0; j < kern->side_len; j++){
+            suma = suma + srcd[(y-1)+i][(x-1)+j] * kernd[i][j];
         }
-      }
-      if(k==0)
-        outd[y][x] = suma;
-      else
-        outd[y][x] = suma/k;
     }
-  }
+    return suma;
+}
+
+void convolucion(const struct img_channel* in, const struct kernel* kern, struct img_channel* out) {
+    const int (*kernd)[kern->side_len] = (int (*)[kern->side_len])kern->data;
+    int kernsum = kernel_sum(kern);
+    kernsum = kernsum == 0 ? 1 : kernsum;
+
+    const struct img_size len = in->len;
+    const uint8_t (*ind)[len.cols] = (uint8_t (*)[len.cols])in->data;
+    uint8_t (*outd)[len.cols] = (uint8_t (*)[len.cols])out->data;
+    for (int y = 1; y < in->len.rows-1; y++) {
+        for (int x = 1; x < in->len.cols-1; x++) {
+            outd[y][x] = weight_entry(y, x, in, kern)/kernsum;
+        }
+    }
 }
 
 static void convolucion_paralelizada(unsigned char** orig, int** kern, unsigned char** dest, size_t rows, size_t cols) {
@@ -97,9 +114,6 @@ static void convolucion_paralelizada(unsigned char** orig, int** kern, unsigned 
 }
 
 int main(int argc, char *argv[]){
-    int Largo, Alto;
-    int i, j;
-
     if (argc != 3) {
         fprintf(stderr, "ERROR: Uso: ./%s [.pgm a difuminar] [.pgm donde escribir la salida]\n", argv[0]);
         return 1;
@@ -108,30 +122,28 @@ int main(int argc, char *argv[]){
     MPI_Init(&argc, &argv);
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     unsigned char** Original = 0;
+    int LargoOrig = 0;
+    int AltoOrig = 0;
     unsigned char** Salida   = 0;
     int** nucleo = 0;
     if (rank == RANK_MASTER) {
-        Original = pgmread(argv[1], &Largo, &Alto);
-        Salida   = (unsigned char**)GetMem2D(Largo, Alto, sizeof(unsigned char));
-        nucleo = (int**) GetMem2D(3, 3, sizeof(int));
-        for (i = 0; i < 3; i++) {
-            for (j = 0; j < 3; j++) {
-                nucleo[i][j] = -1;
-            }
-        }
-        nucleo[1][1] = 1;
+        Original = pgmread(argv[1], &LargoOrig, &AltoOrig);
+        Salida   = (unsigned char**)GetMem2D(LargoOrig, AltoOrig, sizeof(unsigned char));
+        nucleo = (int**)GetMem2D(3, 3, sizeof(int));
+        memcpy(nucleo[0], ridge_kernel_3, sizeof(ridge_kernel_3));
     }
 
-    convolucion_paralelizada(Original, nucleo, Salida, Largo, Alto);
+    convolucion_paralelizada(Original, nucleo, Salida, LargoOrig, AltoOrig);
 
     if (rank == RANK_MASTER) {
-        pgmwrite(Salida, argv[2], Largo, Alto);
+        pgmwrite(Salida, argv[2], LargoOrig, AltoOrig);
 
         Free2D((void**) nucleo, 3);
 
-        Free2D((void**) Original, Largo);
-        Free2D((void**) Salida, Largo);
+        Free2D((void**) Original, LargoOrig);
+        Free2D((void**) Salida, LargoOrig);
     }
 
     MPI_Finalize();
