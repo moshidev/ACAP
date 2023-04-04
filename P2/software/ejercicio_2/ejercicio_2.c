@@ -8,65 +8,86 @@
 
 #define RANK_MASTER     0
 
-void convolucion(unsigned char** Original, int** nucleo, unsigned char** Salida, int Largo, int Alto) {
-  int x, y;
-  int suma;
-  int k = 0;
-  int i, j;
-  for (i = 0; i < 3; i++)
-    for (j = 0; j < 3; j++)
-      k = k + nucleo[i][j];
-
-  for (x = 1; x < Largo-1; x++){
-    for (y = 1; y < Alto-1; y++){
-      suma = 0;
-      for (i = 0; i < 3; i++){
-        for (j = 0; j < 3; j++){
-            suma = suma + Original[(x-1)+i][(y-1)+j] * nucleo[i][j];
-        }
-      }
-      if(k==0)
-        Salida[x][y] = suma;
-      else
-        Salida[x][y] = suma/k;
-    }
-  }
-}
-
 struct img_size {
     uint64_t rows;
     uint64_t cols;
 };
 
-static void convolucion_paralelizada(unsigned char** orig, int** kern, unsigned char** dest, size_t cols, size_t rows) {
+struct img_channel {
+    uint8_t* data;
+    struct img_size len;
+};
+
+struct kernel {
+    int* data;
+    int side_len;
+};
+
+void convolucion(const struct img_channel* in, const struct kernel* kern, struct img_channel* out) {
+    const int (*kernd)[kern->side_len] = kern->data;
+    int k = 0;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            k = k + kernd[i][j];
+        }
+    }
+
+  uint8_t (*ind)[in->len.cols] = in->data;
+  uint8_t (*outd)[out->len.cols] = out->data;
+  for (int x = 1; x < in->len.cols-1; x++){
+    for (int y = 1; y < in->len.rows-1; y++){
+      int suma = 0;
+      for (int i = 0; i < 3; i++){
+        for (int j = 0; j < 3; j++){
+            suma = suma + ind[(y-1)+j][(x-1)+i] * kernd[i][j];
+        }
+      }
+      if(k==0)
+        outd[y][x] = suma;
+      else
+        outd[y][x] = suma/k;
+    }
+  }
+}
+
+static void convolucion_paralelizada(unsigned char** orig, int** kern, unsigned char** dest, size_t rows, size_t cols) {
     int rank, nprocs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
     struct img_size img_size;
-    int** lkern;
+    int* lkern;
     MPI_Alloc_mem(3*3*sizeof(int), MPI_INFO_NULL, &lkern);
     if (rank == RANK_MASTER) {
         img_size.rows = rows;
         img_size.cols = cols;
-        memcpy(lkern, kern, 3*3*sizeof(int));
+        memcpy(lkern, kern[0], 3*3*sizeof(int));
     }
     MPI_Bcast(&img_size, 2, MPI_UINT64_T, RANK_MASTER, MPI_COMM_WORLD);
     MPI_Bcast(lkern, 3*3, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
+    struct kernel lkern_c = { .data = lkern, .side_len = 3 };
     MPI_Barrier(MPI_COMM_WORLD);
 
     rows = img_size.rows;
     cols = img_size.cols;
     size_t rows_per_proc = rows / nprocs;
 
-    unsigned char* lorig = 0;
-    MPI_Alloc_mem(rows_per_proc*cols*sizeof(unsigned char), MPI_INFO_NULL, &lorig);
+    uint8_t* lorig = 0;
+    MPI_Alloc_mem(rows_per_proc*cols*sizeof(uint8_t), MPI_INFO_NULL, &lorig);
+    struct img_channel lorig_c = {
+        .data = lorig,
+        .len = { .rows = rows_per_proc, .cols = cols }
+    };
     MPI_Scatter(rank == RANK_MASTER ? orig[0] : 0, rows_per_proc*cols, MPI_UNSIGNED_CHAR, lorig, rows_per_proc*cols, MPI_UNSIGNED_CHAR, RANK_MASTER, MPI_COMM_WORLD);
 
-    unsigned char* ldest;
-    MPI_Alloc_mem(rows_per_proc*cols*sizeof(unsigned char), MPI_INFO_NULL, &ldest);
-    //convolucion(lorig, lkern, ldest, cols, rows_per_proc);
-    memcpy(ldest, lorig, sizeof(unsigned char)*rows_per_proc*cols);
+    uint8_t* ldest;
+    MPI_Alloc_mem(rows_per_proc*cols*sizeof(uint8_t), MPI_INFO_NULL, &ldest);
+    struct img_channel ldest_c = {
+        .data = ldest,
+        .len = { .rows = rows_per_proc, .cols = cols }
+    };
+
+    convolucion(&lorig_c, &lkern_c, &ldest_c);
 
     MPI_Gather(ldest, rows_per_proc*cols, MPI_UNSIGNED_CHAR, rank == RANK_MASTER ? dest[0] : 0, rows_per_proc*cols, MPI_UNSIGNED_CHAR, RANK_MASTER, MPI_COMM_WORLD);
 

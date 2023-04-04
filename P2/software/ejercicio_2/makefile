@@ -4,6 +4,7 @@ MPICC_FLAGS :=
 
 test: img/moshi512w_filter.pgm img/pmoshi512w_filter.pgm
 	diff $^
+	@echo test moshi512.pgm correcto!
 
 img/moshi512w_filter.pgm: img/moshi512.pgm $(wildcard ejemplo/*)
 	make -C ejemplo -e IIMG=../$< -e OIMG=../$@ ../$@ 
