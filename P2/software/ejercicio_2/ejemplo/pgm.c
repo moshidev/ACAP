@@ -93,7 +93,7 @@ unsigned char** pgmread(char* filename, int* x_size, int* y_size) {
   /* Toma la imagen del archivo */
   for (y=0; y<*y_size; y++)
     for (x=0; x<*x_size; x++, Contador++)
-      Imagen[x][y]=(unsigned char)fgetc(fd);
+      Imagen[y][x]=(unsigned char)fgetc(fd);
 
   /* Verifico que se leyeron todos los bytes */
   if (Contador != (*x_size * *y_size)){
@@ -123,7 +123,7 @@ int pgmwrite(unsigned char** Imagen, char* filename, int Largo, int Alto) {
   /* Vacio la imagen al archivo */
   for (y=0; y<Alto; y++)
     for (x=0; x<Largo; x++, Contador++)
-      fputc(Imagen[x][y], Out);
+      fputc(Imagen[y][x], Out);
 
   /* Verifico que se escriban todos los bytes */
   if (Contador != (Largo*Alto)){
