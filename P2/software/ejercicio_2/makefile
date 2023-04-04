@@ -1,15 +1,19 @@
 NPROCS := 3
 MPIRUN_FLAGS := -n $(NPROCS) --oversubscribe
 MPICC_FLAGS :=
+.PRECIOUS: img/p%w_filter.pgm img/%w_filter.pgm	# tal vez sería mejor crear una variable, realmente para make son archivos intermedios...
 
-test: img/moshi512w_filter.pgm img/pmoshi512w_filter.pgm
+test: test_moshi512 test_zzz
+	@echo todos los tests correctos!
+
+test_%: img/%w_filter.pgm img/p%w_filter.pgm
 	diff $^
-	@echo test moshi512.pgm correcto!
+	@echo '\033[1;32m *' test $*.pgm correcto! '\033[0m'
 
-img/moshi512w_filter.pgm: img/moshi512.pgm $(wildcard ejemplo/*)
+img/%w_filter.pgm: img/%.pgm $(wildcard ejemplo/*)
 	make -C ejemplo -e IIMG=../$< -e OIMG=../$@ ../$@ 
 
-img/pmoshi512w_filter.pgm: img/moshi512.pgm pmoshi_filter_exe 
+img/p%w_filter.pgm: img/%.pgm pmoshi_filter_exe 
 	mpirun $(MPIRUN_FLAGS) ./pmoshi_filter_exe $< $@
 
 pmoshi_filter_exe: ejercicio_2.c ejemplo/pgm.c ejemplo/pgm.h
