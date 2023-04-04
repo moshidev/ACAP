@@ -44,20 +44,20 @@ void convolucion(unsigned char** Original, int** nucleo, unsigned char** Salida,
     for (j = 0; j < 3; j++)
       k = k + nucleo[i][j];
 
-  for (y = 1; y < Alto-1; y++){
-    for (x = 1; x < Largo-1; x++){
+  for (x = 1; x < Largo-1; x++){
+    for (y = 1; y < Alto-1; y++){
       suma = 0;
-      for (i = 0; i < 3; i++){
-        for (j = 0; j < 3; j++){
-            unsigned srci = (y-1)+i;
-            unsigned srcj = (x-1)+j;
-            suma = suma + Original[srci][srcj] * nucleo[i][j];
+      for (j = 0; j < 3; j++){
+        for (i = 0; i < 3; i++){
+          unsigned srci = (y-1)+i;
+          unsigned srcj = (x-1)+j;
+          suma = suma + Original[srcj][srci] * nucleo[j][i];
         }
       }
       if(k==0)
-        Salida[y][x] = suma;
+        Salida[x][y] = suma;
       else
-        Salida[y][x] = suma/k;
+        Salida[x][y] = suma/k;
     }
   }
 }
