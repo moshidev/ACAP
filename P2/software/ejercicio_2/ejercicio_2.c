@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
+#include <time.h>
 #include <mpi.h>
 #include "pgm.h"
 
@@ -27,6 +29,16 @@ struct kernel {
     int* data;
     int side_len;
 };
+
+static double get_wall_time() {
+    struct timeval time;
+    gettimeofday(&time,NULL);
+    return (double)time.tv_sec + (double)time.tv_usec * .000001;
+}
+
+static double get_cpu_time() {
+    return (double)clock() / CLOCKS_PER_SEC;
+}
 
 static int kernel_sum(const struct kernel* kern) {
     const int (*kernd)[kern->side_len] = (int (*)[kern->side_len])kern->data;
@@ -102,7 +114,7 @@ static void MPI_Free_kernel(struct kernel* kernel) {
     memset(kernel, 0, sizeof(struct kernel));
 }
 
-static void convolucion_paralelizada(unsigned char** orig, int** kern, unsigned char** dest, size_t rows, size_t cols) {
+static void convolucion_paralelizada(unsigned char** orig, int** kern, unsigned char** dest, uint64_t rows, uint64_t cols) {
     int rank, nprocs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -123,7 +135,7 @@ static void convolucion_paralelizada(unsigned char** orig, int** kern, unsigned 
     /* Establece en cada proceso el tamaño de la imagen original y el número de lineas que le corresponde procesar */
     rows = img_size.rows;
     cols = img_size.cols;
-    size_t rows_per_proc = rows / nprocs;
+    uint64_t rows_per_proc = rows / nprocs;
 
     /* Reserva en cada proceso la memoria justa para procesar su trozo de imagen correspondiente */
     struct img_channel img_origl = MPI_Alloc_img_channel(rows_per_proc, cols);
@@ -174,7 +186,16 @@ int main(int argc, char *argv[]){
         memcpy(nucleo[0], ridge_kernel_3, sizeof(ridge_kernel_3));
     }
 
+    double wall_time = get_wall_time();
+    double lcpu_time = get_cpu_time();
     convolucion_paralelizada(Original, nucleo, Salida, AltoOrig, LargoOrig);
+    wall_time = get_wall_time() - wall_time;
+    lcpu_time = get_cpu_time() - lcpu_time;
+    double cpu_time;
+    MPI_Reduce(&lcpu_time, &cpu_time, 1, MPI_DOUBLE, MPI_SUM, RANK_MASTER, MPI_COMM_WORLD);
+    if (rank == RANK_MASTER) {
+        printf("wall_time:%f,cpu_time:%f\n", wall_time, cpu_time);
+    }
 
     if (rank == RANK_MASTER) {
         pgmwrite(Salida, argv[2], LargoOrig, AltoOrig);
