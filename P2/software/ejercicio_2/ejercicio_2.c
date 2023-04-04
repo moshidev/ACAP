@@ -45,13 +45,15 @@ static int weight_entry(int y, int x, const struct img_channel* src, const struc
     int suma = 0;
     for (int i = 0; i < kern->side_len; i++){
         for (int j = 0; j < kern->side_len; j++){
-            suma = suma + srcd[(y-1)+i][(x-1)+j] * kernd[i][j];
+            unsigned srci = (y-1)+i;
+            unsigned srcj = (x-1)+j;
+            suma = suma + srcd[srci][srcj] * kernd[i][j];
         }
     }
     return suma;
 }
 
-static void convolucion(const struct img_channel* in, const struct kernel* kern, struct img_channel* out) {
+static void convolucion_selectiva(const struct img_channel* in, const struct kernel* kern, struct img_channel* out, int y1, int y2, int x1, int x2) {
     const int (*kernd)[kern->side_len] = (int (*)[kern->side_len])kern->data;
     int kernsum = kernel_sum(kern);
     kernsum = kernsum == 0 ? 1 : kernsum;
@@ -59,11 +61,15 @@ static void convolucion(const struct img_channel* in, const struct kernel* kern,
     const struct img_size len = in->len;
     const uint8_t (*ind)[len.cols] = (uint8_t (*)[len.cols])in->data;
     uint8_t (*outd)[len.cols] = (uint8_t (*)[len.cols])out->data;
-    for (int y = 1; y < in->len.rows-1; y++) {
-        for (int x = 1; x < in->len.cols-1; x++) {
+    for (int y = y1; y < y2; y++) {
+        for (int x = x1; x < x2; x++) {
             outd[y][x] = weight_entry(y, x, in, kern)/kernsum;
         }
     }
+}
+
+static void convolucion(const struct img_channel* in, const struct kernel* kern, struct img_channel* out) {
+    convolucion_selectiva(in, kern, out, 1, in->len.rows-1, 1, in->len.cols-1);    
 }
 
 static struct img_channel MPI_Alloc_img_channel(uint64_t rows, uint64_t cols) {
@@ -120,17 +126,29 @@ static void convolucion_paralelizada(unsigned char** orig, int** kern, unsigned 
     size_t rows_per_proc = rows / nprocs;
 
     /* Reserva en cada proceso la memoria justa para procesar su trozo de imagen correspondiente */
-    struct img_channel img_orig = MPI_Alloc_img_channel(rows_per_proc, cols);
-    struct img_channel img_dest = MPI_Alloc_img_channel(rows_per_proc, cols);
+    struct img_channel img_origl = MPI_Alloc_img_channel(rows_per_proc, cols);
+    struct img_channel img_destl = MPI_Alloc_img_channel(rows_per_proc, cols);
 
     /* Distribuye, procesa y reune los trozos de la imagen */
-    MPI_Scatter(rank == RANK_MASTER ? orig[0] : 0, rows_per_proc*cols, MPI_UNSIGNED_CHAR, img_orig.data, rows_per_proc*cols, MPI_UNSIGNED_CHAR, RANK_MASTER, MPI_COMM_WORLD);
-    convolucion(&img_orig, &conv_matrix, &img_dest);
-    MPI_Gather(img_dest.data, rows_per_proc*cols, MPI_UNSIGNED_CHAR, rank == RANK_MASTER ? dest[0] : 0, rows_per_proc*cols, MPI_UNSIGNED_CHAR, RANK_MASTER, MPI_COMM_WORLD);
+    MPI_Scatter(rank == RANK_MASTER ? orig[0] : 0, rows_per_proc*cols, MPI_UNSIGNED_CHAR, img_origl.data, rows_per_proc*cols, MPI_UNSIGNED_CHAR, RANK_MASTER, MPI_COMM_WORLD);
+    convolucion(&img_origl, &conv_matrix, &img_destl);
+    MPI_Gather(img_destl.data, rows_per_proc*cols, MPI_UNSIGNED_CHAR, rank == RANK_MASTER ? dest[0] : 0, rows_per_proc*cols, MPI_UNSIGNED_CHAR, RANK_MASTER, MPI_COMM_WORLD);
 
-    /* Libera memoria utilizada en la función */
-    MPI_Free_img_channel(&img_orig);
-    MPI_Free_img_channel(&img_dest);
+    /* Libera en cada proceso memoria utilizada en la función */
+    MPI_Free_img_channel(&img_origl);
+    MPI_Free_img_channel(&img_destl);
+
+    /* Procesa los trozos no facilmente paralelizables */
+    if (rank == RANK_MASTER) {
+        const struct img_channel img_orig = { .data = orig[0], .len = { .rows = rows, .cols = cols } };
+        struct img_channel img_dest = { .data = dest[0], .len = { .rows = rows, .cols = cols } };
+        for (int i = 1; i < nprocs; i++) {
+            convolucion_selectiva(&img_orig, &conv_matrix, &img_dest, rows_per_proc*i-1, rows_per_proc*i+1, 1, cols-1);
+        }
+        if (rows % nprocs) {
+            convolucion_selectiva(&img_orig, &conv_matrix, &img_dest, rows_per_proc*nprocs-1, rows-1, 1, cols-1);
+        }
+    }
     MPI_Free_kernel(&conv_matrix);
 }
 
@@ -156,7 +174,7 @@ int main(int argc, char *argv[]){
         memcpy(nucleo[0], ridge_kernel_3, sizeof(ridge_kernel_3));
     }
 
-    convolucion_paralelizada(Original, nucleo, Salida, LargoOrig, AltoOrig);
+    convolucion_paralelizada(Original, nucleo, Salida, AltoOrig, LargoOrig);
 
     if (rank == RANK_MASTER) {
         pgmwrite(Salida, argv[2], LargoOrig, AltoOrig);
