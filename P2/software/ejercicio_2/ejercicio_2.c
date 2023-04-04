@@ -1,4 +1,3 @@
-#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,7 +51,7 @@ static int weight_entry(int y, int x, const struct img_channel* src, const struc
     return suma;
 }
 
-void convolucion(const struct img_channel* in, const struct kernel* kern, struct img_channel* out) {
+static void convolucion(const struct img_channel* in, const struct kernel* kern, struct img_channel* out) {
     const int (*kernd)[kern->side_len] = (int (*)[kern->side_len])kern->data;
     int kernsum = kernel_sum(kern);
     kernsum = kernsum == 0 ? 1 : kernsum;
@@ -67,50 +66,72 @@ void convolucion(const struct img_channel* in, const struct kernel* kern, struct
     }
 }
 
+static struct img_channel MPI_Alloc_img_channel(uint64_t rows, uint64_t cols) {
+    uint8_t* allocated_data;
+    MPI_Alloc_mem(rows*cols*sizeof(uint8_t), MPI_INFO_NULL, &allocated_data);
+    struct img_channel imgc = {
+        .data = allocated_data,
+        .len = { .rows = rows, .cols = cols }
+    };
+    return imgc;
+}
+
+static void MPI_Free_img_channel(struct img_channel* img_channel) {
+    MPI_Free_mem(img_channel->data);
+    memset(img_channel, 0, sizeof(struct img_channel));
+}
+
+static struct kernel MPI_Alloc_kernel(int side_len) {
+    int* allocated_data;
+    MPI_Alloc_mem(side_len*side_len*sizeof(int), MPI_INFO_NULL, &allocated_data);
+    struct kernel kernel = {
+        .data = allocated_data,
+        .side_len = side_len
+    };
+    return kernel;
+}
+
+static void MPI_Free_kernel(struct kernel* kernel) {
+    MPI_Free_mem(kernel->data);
+    memset(kernel, 0, sizeof(struct kernel));
+}
+
 static void convolucion_paralelizada(unsigned char** orig, int** kern, unsigned char** dest, size_t rows, size_t cols) {
     int rank, nprocs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
+    /* Comunica a todos los procesos tanto el kernel como el tamaño de la imagen  */
     struct img_size img_size;
-    int* lkern;
-    MPI_Alloc_mem(3*3*sizeof(int), MPI_INFO_NULL, &lkern);
+    const int kern_side_len = 3;
+    struct kernel conv_matrix = MPI_Alloc_kernel(kern_side_len);
     if (rank == RANK_MASTER) {
         img_size.rows = rows;
         img_size.cols = cols;
-        memcpy(lkern, kern[0], 3*3*sizeof(int));
+        memcpy(conv_matrix.data, kern[0], kern_side_len*kern_side_len*sizeof(int));
     }
     MPI_Bcast(&img_size, 2, MPI_UINT64_T, RANK_MASTER, MPI_COMM_WORLD);
-    MPI_Bcast(lkern, 3*3, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
-    struct kernel lkern_c = { .data = lkern, .side_len = 3 };
+    MPI_Bcast(conv_matrix.data, 3*3, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
     MPI_Barrier(MPI_COMM_WORLD);
 
+    /* Establece en cada proceso el tamaño de la imagen original y el número de lineas que le corresponde procesar */
     rows = img_size.rows;
     cols = img_size.cols;
     size_t rows_per_proc = rows / nprocs;
 
-    uint8_t* lorig = 0;
-    MPI_Alloc_mem(rows_per_proc*cols*sizeof(uint8_t), MPI_INFO_NULL, &lorig);
-    struct img_channel lorig_c = {
-        .data = lorig,
-        .len = { .rows = rows_per_proc, .cols = cols }
-    };
-    MPI_Scatter(rank == RANK_MASTER ? orig[0] : 0, rows_per_proc*cols, MPI_UNSIGNED_CHAR, lorig, rows_per_proc*cols, MPI_UNSIGNED_CHAR, RANK_MASTER, MPI_COMM_WORLD);
+    /* Reserva en cada proceso la memoria justa para procesar su trozo de imagen correspondiente */
+    struct img_channel img_orig = MPI_Alloc_img_channel(rows_per_proc, cols);
+    struct img_channel img_dest = MPI_Alloc_img_channel(rows_per_proc, cols);
 
-    uint8_t* ldest;
-    MPI_Alloc_mem(rows_per_proc*cols*sizeof(uint8_t), MPI_INFO_NULL, &ldest);
-    struct img_channel ldest_c = {
-        .data = ldest,
-        .len = { .rows = rows_per_proc, .cols = cols }
-    };
+    /* Distribuye, procesa y reune los trozos de la imagen */
+    MPI_Scatter(rank == RANK_MASTER ? orig[0] : 0, rows_per_proc*cols, MPI_UNSIGNED_CHAR, img_orig.data, rows_per_proc*cols, MPI_UNSIGNED_CHAR, RANK_MASTER, MPI_COMM_WORLD);
+    convolucion(&img_orig, &conv_matrix, &img_dest);
+    MPI_Gather(img_dest.data, rows_per_proc*cols, MPI_UNSIGNED_CHAR, rank == RANK_MASTER ? dest[0] : 0, rows_per_proc*cols, MPI_UNSIGNED_CHAR, RANK_MASTER, MPI_COMM_WORLD);
 
-    convolucion(&lorig_c, &lkern_c, &ldest_c);
-
-    MPI_Gather(ldest, rows_per_proc*cols, MPI_UNSIGNED_CHAR, rank == RANK_MASTER ? dest[0] : 0, rows_per_proc*cols, MPI_UNSIGNED_CHAR, RANK_MASTER, MPI_COMM_WORLD);
-
-    MPI_Free_mem(lorig);
-    MPI_Free_mem(lkern);
-    MPI_Free_mem(ldest);
+    /* Libera memoria utilizada en la función */
+    MPI_Free_img_channel(&img_orig);
+    MPI_Free_img_channel(&img_dest);
+    MPI_Free_kernel(&conv_matrix);
 }
 
 int main(int argc, char *argv[]){
