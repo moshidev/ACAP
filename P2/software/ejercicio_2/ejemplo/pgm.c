@@ -71,7 +71,7 @@ unsigned char** pgmread(char* filename, int* x_size, int* y_size) {
   unsigned char **Imagen;
 
   if ((fd=fopen(filename,"rb")) == NULL){
-    printf("No puedo abrir %s para lectura!\n", filename);
+    fprintf(stderr, "No puedo abrir %s para lectura!\n", filename);
     exit(0);
   }
 
@@ -79,7 +79,7 @@ unsigned char** pgmread(char* filename, int* x_size, int* y_size) {
   header[0]=fgetc(fd);
   header[1]=fgetc(fd);
   if(!(header[0]=='P' && header[1]=='5')){
-    printf("Error al leer el archivo\nLa imagen %s no es un PGM!\n",filename);
+    fprintf(stderr, "Error al leer el archivo\nLa imagen %s no es un PGM!\n",filename);
     fclose(fd);
     exit(0);
   }
@@ -97,12 +97,12 @@ unsigned char** pgmread(char* filename, int* x_size, int* y_size) {
 
   /* Verifico que se leyeron todos los bytes */
   if (Contador != (*x_size * *y_size)){
-    printf("Archivo con longitud incorrecta!\n");
+    fprintf(stderr, "Archivo con longitud incorrecta!\n");
     exit(1);
   }
 
   fclose(fd);
-  printf("Cargando imagen '%s' de %ix%i\n", filename, *x_size, *y_size);
+  //printf("Cargando imagen '%s' de %ix%i\n", filename, *x_size, *y_size);
   return Imagen;
 }
 
@@ -111,7 +111,7 @@ int pgmwrite(unsigned char** Imagen, char* filename, int Largo, int Alto) {
   int x, y, Contador=0;
 
   if ((Out=fopen(filename,"wb")) == NULL){
-    printf("No puedo escribir la imagen!\n");
+    fprintf(stderr, "No puedo escribir la imagen!\n");
     return 0;
   }
 
@@ -127,12 +127,12 @@ int pgmwrite(unsigned char** Imagen, char* filename, int Largo, int Alto) {
 
   /* Verifico que se escriban todos los bytes */
   if (Contador != (Largo*Alto)){
-    printf("Archivo con longitud incorrecta!\n");
+    fprintf(stderr, "Archivo con longitud incorrecta!\n");
     return 0;
   }
 
   fclose(Out);
 
-  printf("\nGuardando imagen '%s' de %ix%i\n", filename, Largo, Alto);
+  //printf("\nGuardando imagen '%s' de %ix%i\n", filename, Largo, Alto);
   return 1;
 }
