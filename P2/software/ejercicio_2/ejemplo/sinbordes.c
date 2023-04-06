@@ -35,7 +35,7 @@
 #include <string.h>
 #include "pgm.h"
 
-void convolucion(unsigned char** Original, int** nucleo, unsigned char** Salida, int Largo, int Alto) {
+void convolucion(unsigned char** Original, int** nucleo, unsigned char** Salida, int Alto, int Largo) {
   int x, y;
   int suma;
   int k = 0;
@@ -47,17 +47,17 @@ void convolucion(unsigned char** Original, int** nucleo, unsigned char** Salida,
   for (x = 1; x < Largo-1; x++){
     for (y = 1; y < Alto-1; y++){
       suma = 0;
-      for (j = 0; j < 3; j++){
-        for (i = 0; i < 3; i++){
+      for (i = 0; i < 3; i++){
+        for (j = 0; j < 3; j++){
           unsigned srci = (y-1)+i;
           unsigned srcj = (x-1)+j;
-          suma = suma + Original[srcj][srci] * nucleo[j][i];
+          suma = suma + Original[srci][srcj] * nucleo[i][j];
         }
       }
       if(k==0)
-        Salida[x][y] = suma;
-      else
-        Salida[x][y] = suma/k;
+        Salida[y][x] = suma;
+      else    
+        Salida[y][x] = suma/k;
     }
   }
 }
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]){
       nucleo[i][j] = -1;
   nucleo[1][1] = 1;
 
-  convolucion(Original, nucleo, Salida, Largo, Alto);
+  convolucion(Original, nucleo, Salida, Largo, Alto); // pgmread devuelve un Array2D con las columnas intercambiadas con las filas
 
   pgmwrite(Salida, argv[2], Largo, Alto);
 

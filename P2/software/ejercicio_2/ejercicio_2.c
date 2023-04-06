@@ -188,7 +188,7 @@ int main(int argc, char *argv[]){
 
     double wall_time = get_wall_time();
     double lcpu_time = get_cpu_time();
-    convolucion_paralelizada(Original, nucleo, Salida, AltoOrig, LargoOrig);
+    convolucion_paralelizada(Original, nucleo, Salida, LargoOrig, AltoOrig); // pgmread devuelve un Array2D con las columnas intercambiadas con las filas
     wall_time = get_wall_time() - wall_time;
     lcpu_time = get_cpu_time() - lcpu_time;
     double cpu_time;
