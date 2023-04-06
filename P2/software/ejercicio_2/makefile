@@ -3,7 +3,7 @@ MPIRUN_FLAGS := -n $(NPROCS) --oversubscribe
 MPICC_FLAGS :=
 .PRECIOUS: img/p%w_filter.pgm img/%w_filter.pgm	# tal vez sería mejor crear una variable, realmente para make son archivos intermedios...
 
-test: test_moshi512 test_zzz
+test: test_moshi512 test_zzz test_IMG_9986 test_ineitor test_never_ask_how
 	@echo todos los tests correctos!
 
 test_%: img/%w_filter.pgm img/p%w_filter.pgm
