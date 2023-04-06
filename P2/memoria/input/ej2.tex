@@ -1,1 +1,28 @@
-\section{Paralelización de un algoritmo de procesamiento digital de imágenes.}
+\section{Paralelización de un algoritmo de procesamiento digital de imágenes,}
+
+\begin{table}[!ht]
+    \centering
+    \begin{tabular}{|l|l|l|}
+    \hline
+        \textbf{nprocs} & \textbf{wall\_time} & \textbf{cpu\_time} \\ \hline
+        1 & 1,262646 & 1,259698 \\ \hline
+        2 & 0,659454 & 2,627602 \\ \hline
+        3 & 0,460211 & 4,073324 \\ \hline
+        4 & 0,367742 & 5,507351 \\ \hline
+        5 & 0,319758 & 7,114452 \\ \hline
+        6 & 0,296706 & 9,049741 \\ \hline
+    \end{tabular}
+    \caption{}
+\end{table}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{nitori_segundos_nprocs.png}
+    \caption{}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{nitori_speedup_nprocs.png}
+    \caption{}
+\end{figure}
