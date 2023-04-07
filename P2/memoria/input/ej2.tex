@@ -10,30 +10,30 @@ Al tener como restricción el que la paralelización del algoritmo
 se realiza a nivel de proceso decidimos realizar un particionamiento de carga en base
 a datos. Concretamente dividimos las filas de la imagen entre el número de procesos, de forma
 que las filas correspondientes a cada proceso son contiguas y de forma que las filas
-sobrantes de la partición y las no paralelizables por esta las procesa el proceso principal.
+sobrantes de la partición y las no paralelizables las trata el proceso principal.
 
 El algoritmo requiere tanto de una matriz de convolución como de un conjunto de pixeles de entrada
-(a procesar) y otro de salida. Para la matriz de convolución utilizamos \texttt{MPI\_Broadcast}.
-Para estos conjuntos de píxeles hacemos uso de la funcion \texttt{MPI\_Scatter}, la cual a partir
-de un segmento contiguo de memoria realiza una partición de la longitud que se le indique, y su
-complementaria \texttt{MPI\_Gather}.
+(a procesar) y otro de salida. Para comunicar la matriz de convolución a los distintos procesos
+utilizamos \texttt{MPI\_Broadcast}.
+Para transmitir y recibir los conjuntos de píxeles (filas) hacemos uso de la funcion \texttt{MPI\_Scatter}, la cual a partir
+de un segmento contiguo de memoria realiza una partición de la longitud que se le indique enviando cada
+parte a cada proceso del grupo de comunicación que se le indique, y su complementaria \texttt{MPI\_Gather}.
 
 Elegimos esta solución por diversas razones:
 
 \begin{enumerate}
     \item Estas funciones están preparadas para escalar según el número de procesos \cite{MPIBroadcast}.
-    \item Aunque \texttt{MPI\_Scatter} requiere que la memoria no se solape, creando dos
-    filas por cada par de procesos con datos adyacentes que no se paralelizan y que tiene
-    que procesar el proceso cero, preferimos esto a complicar el código.
+    \item Aunque \texttt{MPI\_Scatter} requiere que la memoria no se solape, haciendo que por cada par de
+    procesos haya una linea que tiene que tratar el proceso cero, preferimos esto a complicar el código.
     \item Desconocemos dónde residen los cuellos de botella y no consideramos adaptar la solución
-    a la naturaleza del software subyacente al no entrar dentro de los objetivos del ejercicio.
+    a la naturaleza del hardware subyacente.
 \end{enumerate}
 
 Podemos obtener los detalles de la implementación en el fichero adjunto \texttt{ejercicio\_2.c}, donde en
 la función \texttt{convolucion\_paralelizada} relatamos los pasos que seguimos.
 
-Para comprobar que el algoritmo da resultados correctos realizamos una prueba que consiste en procesar una mismo imagen una vez con el algoritmo
-que se nos proporciona y otra con nuestro algoritmo paralelizado y ver si coinciden. Podemos ejecutar estas pruebas con \texttt{make test}.
+Para comprobar que el algoritmo da resultados correctos realizamos una prueba que consiste en procesar una imagen una vez con el algoritmo
+que se nos proporciona y otra con nuestro algoritmo paralelizado, comprobando que ambas coincidan. Podemos ejecutar estas pruebas con \texttt{make test}.
 
 \subsection{Evaluación del algoritmo paralelizado.}
 
@@ -56,7 +56,7 @@ en las siguientes figuras.
     \caption{Tabla con los tiempos de ejecución obtenidos para el \textit{benchmark} \texttt{nitori\_get\_down.pgm} en un \texttt{Macbook Pro}
     con un procesador Intel \texttt{i7-9750H}. A simple vista podemos observar cómo, aproximadamente, el tiempo
     transcurrido se va dividiendo por el número de procesos, mientras que el tiempo empleado por la CPU se va
-    multiplicando por el número de procesos mas un tiempo que aumenta progresivamente.}
+    multiplicando por el número de procesos más un tiempo que aumenta progresivamente.}
 \end{table}
 
 
@@ -71,7 +71,7 @@ en las siguientes figuras.
     \centering
     \includegraphics[width=\textwidth]{nitori_speedup_nprocs.png}
     \caption{Relación factor de Aceleración/Número de procesos para los resultados obtenidos en el \textit{benchmark} \texttt{nitori\_get\_down.pgm}.
-    Podemos observar cómo este crecimiento no es linear según aumenta el número de procesos, sino que sigue una curva determinada tanto por el overhead
+    Podemos observar cómo este crecimiento no es lineal según aumenta el número de procesos, sino que sigue una curva determinada tanto por el \textit{overhead}
     resultante de paralelizar el algoritmo como por las partes no paralelizadas en el algoritmo.}
 \end{figure}
 
