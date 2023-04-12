@@ -37,39 +37,39 @@ int main(int argc, char** argv) {
     comprueba_invocacion_correcta(argc, argv);
 
     /* Calculamos la carga de trabajo correspondiente a cada proceso. */
-    char* texto_introducido;
+    char* input_text;
     int chars_per_proc;
     if (rank == RANK_MASTER) {
         printf("\x1b[1;31mSoy Sir Proceso 0. Me han pedido que os comunique el siguiente mensaje:\n\x1b[0m\x1b[1m%s\x1b[0m\n\n", argv[1]);
-        int texto_introducido_len = strlen(argv[1]) + 1;
-        chars_per_proc = texto_introducido_len / nprocs + (texto_introducido_len % nprocs ? 1 : 0);
+        int input_text_len = strlen(argv[1]) + 1;
+        chars_per_proc = input_text_len / nprocs + (input_text_len % nprocs ? 1 : 0);
 
-        MPI_Alloc_mem(chars_per_proc * nprocs, MPI_INFO_NULL, &texto_introducido);
-        strcpy(texto_introducido, argv[1]);
+        MPI_Alloc_mem(sizeof(char)*chars_per_proc * nprocs, MPI_INFO_NULL, &input_text);
+        strcpy(input_text, argv[1]);
     }
 
     /* Comunicamos a los procesos la longitud de la carga */
     MPI_Bcast(&chars_per_proc, 1, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
 
     /* Comunicamos a cada proceso su carga correspondiente */
-    char* ltexto_parcial;
-    MPI_Alloc_mem(chars_per_proc, MPI_INFO_NULL, &ltexto_parcial);
-    MPI_Scatter(texto_introducido, chars_per_proc, MPI_CHAR, ltexto_parcial, chars_per_proc, MPI_CHAR, RANK_MASTER, MPI_COMM_WORLD);
+    char* lpartial_text;
+    MPI_Alloc_mem(sizeof(char)*chars_per_proc, MPI_INFO_NULL, &lpartial_text);
+    MPI_Scatter(input_text, chars_per_proc, MPI_CHAR, lpartial_text, chars_per_proc, MPI_CHAR, RANK_MASTER, MPI_COMM_WORLD);
 
-    printf("Señor Proceso %d, le comunico que \x1b[1m%s\x1b[0m\n", rank, ltexto_parcial);   // MPI no garantiza que todos los procesos puedan escribir al stdout.
+    printf("Señor Proceso %d, le comunico que \x1b[1m%s\x1b[0m\n", rank, lpartial_text);   // MPI no garantiza que todos los procesos puedan escribir al stdout.
 
     /* Agrupamos en cada proceso la carga de todos los procesos, en orden */
-    char* ltexto_completo;
-    MPI_Alloc_mem(chars_per_proc * nprocs, MPI_INFO_NULL, &ltexto_completo);
-    MPI_Allgather(ltexto_parcial, chars_per_proc, MPI_CHAR, ltexto_completo, chars_per_proc, MPI_CHAR, MPI_COMM_WORLD);
+    char* lfull_text;
+    MPI_Alloc_mem(sizeof(char)*chars_per_proc * nprocs, MPI_INFO_NULL, &lfull_text);
+    MPI_Allgather(lpartial_text, chars_per_proc, MPI_CHAR, lfull_text, chars_per_proc, MPI_CHAR, MPI_COMM_WORLD);
 
-    printf("Soy Sir Proceso %d. Hago saber que \x1b[1m%s\x1b[0m\n", rank, ltexto_completo);
+    printf("Soy Sir Proceso %d. Hago saber que \x1b[1m%s\x1b[0m\n", rank, lfull_text);
 
     if (rank == RANK_MASTER) {
-        MPI_Free_mem(texto_introducido);
+        MPI_Free_mem(input_text);
     }
-    MPI_Free_mem(ltexto_parcial);
-    MPI_Free_mem(ltexto_completo);
+    MPI_Free_mem(lpartial_text);
+    MPI_Free_mem(lfull_text);
 
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
