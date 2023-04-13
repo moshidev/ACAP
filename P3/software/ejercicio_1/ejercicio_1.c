@@ -19,41 +19,35 @@ struct pthread_calc_max;
 
 struct pthread_calc_max_context {
     size_t thread_id;
-    size_t thread_count;
-    const double* vector;
-    size_t vector_len;
     size_t solution_offset;
+    struct pthread_calc_max* parent;
 };
 
 struct pthread_calc_max {
     const double* vector;
-    const size_t vector_len;
+    size_t vector_len;
     pthread_t* thread;
     struct pthread_calc_max_context* context;
     size_t thread_count;
 };
 
-static struct pthread_calc_max make_pthread_calc_max(size_t thread_count, const double* vector, size_t vector_len) {
-    struct pthread_calc_max ret = {
-        .vector = vector,
-        .vector_len = vector_len,
-        .thread = calloc(thread_count, sizeof(pthread_t)),
-        .context = calloc(thread_count, sizeof(struct pthread_calc_max_context)),
-        .thread_count = thread_count
-    };
+static struct pthread_calc_max* make_pthread_calc_max(size_t thread_count, const double* vector, size_t vector_len) {
+    struct pthread_calc_max* ret = malloc(sizeof(struct pthread_calc_max) + thread_count*sizeof(pthread_t) + thread_count*sizeof(struct pthread_calc_max_context));
+    ret->vector = vector;
+    ret->vector_len = vector_len;
+    ret->thread = (pthread_t*) (((uint8_t*)ret) + sizeof(struct pthread_calc_max));
+    ret->context = (struct pthread_calc_max_context*) (((uint8_t*)ret) + sizeof(struct pthread_calc_max) + thread_count*sizeof(pthread_t));
+    ret->thread_count = thread_count;
     for (size_t i = 0; i < thread_count; i++) {
-        ret.context[i].thread_id = i;
-        ret.context[i].thread_count = thread_count;
-        ret.context[i].vector = vector;
-        ret.context[i].vector_len = vector_len;
-        ret.context[i].solution_offset = -1;
+        ret->context[i].thread_id = i;
+        ret->context[i].solution_offset = 0;
+        ret->context[i].parent = ret;
     }
     return ret;
 }
 
 static void destroy_pthread_calc_max(struct pthread_calc_max* p) {
-    free(p->thread);
-    free(p->context);
+    free(p);
 }
 
 size_t calc_max_seq(const double* v, size_t vlen) {
@@ -70,37 +64,38 @@ size_t calc_max_seq(const double* v, size_t vlen) {
 
 void* pthread_calc_max_worker(void* pthread_user_data) {
     struct pthread_calc_max_context* c = (struct pthread_calc_max_context*)pthread_user_data;
+    struct pthread_calc_max* p = c->parent;
 
-    size_t len = c->vector_len / c->thread_count;
-    if (c->thread_id == c->thread_count-1) {
-        len += c->vector_len % c->thread_count;
+    size_t len = p->vector_len / p->thread_count;
+    if (c->thread_id == p->thread_count-1) {
+        len += p->vector_len % p->thread_count;
     }
 
     size_t offset = len * c->thread_id;
-    const double* v = c->vector + offset;
+    const double* v = p->vector + offset;
     c->solution_offset = calc_max_seq(v, len) + offset;
 
     pthread_exit(c);
 }
 
 size_t calc_max_parallel(size_t thread_count, const double* v, size_t vlen) {
-    struct pthread_calc_max pexec = make_pthread_calc_max(thread_count, v, vlen);
+    struct pthread_calc_max* pexec = make_pthread_calc_max(thread_count, v, vlen);
     
     for (size_t i = 0; i < thread_count; i++) {
-        pthread_create(&pexec.thread[i], NULL, pthread_calc_max_worker, &pexec.context[i]);
+        pthread_create(&pexec->thread[i], NULL, pthread_calc_max_worker, &pexec->context[i]);
     }
 
     size_t max_i = 0;
     for (size_t i = 0; i < thread_count; i++) {
         struct pthread_calc_max_context* context;
-        pthread_join(pexec.thread[i], (void**)&context);
+        pthread_join(pexec->thread[i], (void**)&context);
 
         if (v[context->solution_offset] > v[max_i]) {
             max_i = context->solution_offset;
         }
     }
 
-    destroy_pthread_calc_max(&pexec);
+    destroy_pthread_calc_max(pexec);
     return max_i;
 }
 
