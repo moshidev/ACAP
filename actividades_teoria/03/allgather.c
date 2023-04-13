@@ -37,15 +37,14 @@ int main(int argc, char** argv) {
     comprueba_invocacion_correcta(argc, argv);
 
     /* Calculamos la carga de trabajo correspondiente a cada proceso. */
-    char* input_text;
+    const char* input_text = 0;
     int chars_per_proc;
     if (rank == RANK_MASTER) {
         printf("\x1b[1;31mSoy Sir Proceso 0. Me han pedido que os comunique el siguiente mensaje:\n\x1b[0m\x1b[1m%s\x1b[0m\n\n", argv[1]);
         int input_text_len = strlen(argv[1]) + 1;
         chars_per_proc = input_text_len / nprocs + (input_text_len % nprocs ? 1 : 0);
 
-        MPI_Alloc_mem(sizeof(char)*chars_per_proc * nprocs, MPI_INFO_NULL, &input_text);
-        strcpy(input_text, argv[1]);
+        input_text = argv[1];
     }
 
     /* Comunicamos a los procesos la longitud de la carga */
@@ -65,9 +64,6 @@ int main(int argc, char** argv) {
 
     printf("Soy Sir Proceso %d. Hago saber que \x1b[1m%s\x1b[0m\n", rank, lfull_text);
 
-    if (rank == RANK_MASTER) {
-        MPI_Free_mem(input_text);
-    }
     MPI_Free_mem(lpartial_text);
     MPI_Free_mem(lfull_text);
 
