@@ -21,7 +21,7 @@ static void assert_argc(int argc, char** argv) {
 	}
 }
 
-static void assert_set_len(size_t va_len, size_t vb_len, char* command, char* va_arg, char* vb_arg) {
+static void assert_v_len(size_t va_len, size_t vb_len, char* command, char* va_arg, char* vb_arg) {
 	if (va_len == 0 || va_len == 0 || va_arg[0] == '-' || vb_arg[0] == '-') {
 		fprintf(stderr, "O bien no has introducido un número o bien es un número menor o igual a cero.\n");
 		fprintf(stderr, txt_err_dist);
@@ -32,6 +32,23 @@ static void assert_set_len(size_t va_len, size_t vb_len, char* command, char* va
 
 KHASH_SET_INIT_INT(i32)
 
+static khash_t(i32)* mk_kh_i32_set_from_vector(int32_t* v, size_t v_len) {
+	khash_t(i32)* kh_set = kh_init(i32);
+
+	for (size_t i = 0; i < v_len; i++) {
+		int retc;
+		kh_put(i32, kh_set, v[i], &retc);
+
+		if (retc < 0) {
+			fprintf(stderr, "o.o no puedo insertar la clave %d en el hashset. ¿Por qué?\n", v[i]);
+			kh_destroy(i32, kh_set);
+			return 0;
+		}
+	}
+
+	return kh_set;
+}
+
 int main(int argc, char** argv) {
 	assert_argc(argc, argv);
 
@@ -40,7 +57,7 @@ int main(int argc, char** argv) {
 	size_t smallest_v_len = va_len < vb_len ? va_len : vb_len;
 	size_t biggest_v_len = va_len >= vb_len ? va_len : vb_len;
 
-	assert_set_len(va_len, vb_len, argv[0], argv[1], argv[2]);
+	assert_v_len(va_len, vb_len, argv[0], argv[1], argv[2]);
 
 	printf("Reserva memoria...\n");
 	int32_t* va = calloc(va_len, sizeof(int32_t));
@@ -56,32 +73,34 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	printf("Inicializa hashset...\n");
-	khash_t(i32)* hset_a = kh_init(i32);
-	for (size_t i = 0; i < va_len; i++) {
-		int retc;
-		kh_put(i32, hset_a, va[i], &retc);
-		if (retc < 0) {
-			fprintf(stderr, "o.o no puedo insertar la clave %d en el hashset. ¿Por qué?\n", va[i]);
-			fprintf(stderr, "Error fatal.\n");
-			exit(39);
-		}
+	printf("Inicializa hashsets...\n");
+	khash_t(i32)* hset_a = mk_kh_i32_set_from_vector(va, va_len);
+	if (!hset_a) {
+		fprintf(stderr, "Error fatal inicializando conjunto A.\n");
+		exit(39);
+	}
+	khash_t(i32)* hset_b = mk_kh_i32_set_from_vector(vb, vb_len);
+	if (!hset_b) {
+		fprintf(stderr, "Error fatal inicializando conjunto B.\n");
+		exit(39);
 	}
 
 	printf("Calcula el # de la intersección de los dos conjuntos...\n");
-	khash_t(i32)* hset_b = kh_init(i32);
 	size_t intersect_count = 0;
-	for (size_t i = 0; i < vb_len; i++) {
-		int retc;
-		kh_put(i32, hset_b, vb[i], &retc);
-		if (retc == 1) {
-			khint_t it = kh_get(i32, hset_a, vb[i]);
-			bool is_missing = (it == kh_end(hset_a));
+	for (khint_t it_b = kh_begin(hset_b); it_b != kh_end(hset_b); ++it_b) {
+		if (kh_exist(hset_b, it_b)) {
+			khint_t it_a = kh_get(i32, hset_a, kh_key(hset_a, it_b));
+			bool is_missing = (it_a == kh_end(hset_a));
 			intersect_count += is_missing ? 0 : 1;
 		}
 	}
 
 	printf("Cardinalidad encontrada: %zu\n", intersect_count);
+
+	kh_destroy(i32, hset_a);
+	kh_destroy(i32, hset_b);
+	free(va);	//... espera, realmente hacen falta vectores para nuestro cometido? Además, esto es menos seguro que una arqueta sin tapa XD
+	free(vb);
 
 	return 0;
 }
