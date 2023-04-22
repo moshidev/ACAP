@@ -1,3 +1,4 @@
+#include "khash.h"
 #include <pthread.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -53,13 +54,6 @@ int main(int argc, char** argv) {
 			vb[i] = i%1000;
 		}
 	}
-	
-	// https://stackoverflow.com/questions/7115445/what-is-the-optimal-capacity-and-load-factor-for-a-fixed-size-hashmap
-	printf("Inicializa hashmap...\n");
-	double t = get_wall_time();
-	for (size_t i = 0; i < smallest_v_len; i++) {
-	}
-	printf("t: %f\n", get_wall_time()-t);
 
 	return 0;
 }
