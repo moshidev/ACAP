@@ -33,6 +33,9 @@ struct pthread_calc_max {
 
 static struct pthread_calc_max* make_pthread_calc_max(size_t thread_count, const double* vector, size_t vector_len) {
     struct pthread_calc_max* ret = malloc(sizeof(struct pthread_calc_max) + thread_count*sizeof(pthread_t) + thread_count*sizeof(struct pthread_calc_max_context));
+    if (!ret) {
+        return 0;
+    }
     ret->vector = vector;
     ret->vector_len = vector_len;
     ret->thread = (pthread_t*) (((uint8_t*)ret) + sizeof(struct pthread_calc_max));
@@ -80,7 +83,12 @@ void* pthread_calc_max_worker(void* pthread_user_data) {
 
 size_t calc_max_parallel(size_t thread_count, const double* v, size_t vlen) {
     struct pthread_calc_max* pexec = make_pthread_calc_max(thread_count, v, vlen);
-    
+    if (!pexec) {
+        fprintf(stderr, "ª >w< no he podido reservar memoria para los trabajadores!\n");
+        fprintf(stderr, "Error fatal.\n");
+        exit(38);
+    }
+
     for (size_t i = 0; i < thread_count; i++) {
         pthread_create(&pexec->thread[i], NULL, pthread_calc_max_worker, &pexec->context[i]);
     }
@@ -127,6 +135,11 @@ int main(int argc, char** argv) {
 
     /* Inicializamos un vector de double valores aleatorios */
     double* vector = calloc(vector_len, sizeof(double));
+    if (!vector) {
+        fprintf(stderr, "ª >w< son demasiados datos! no he podido reservar un trozo de memoria contigua tan grande!\n");
+        fprintf(stderr, "Error fatal\n");
+        exit(39);
+    }
     for (size_t i = 0; i < vector_len; i++) {
         *(((int*)vector)+i) = rand();
         *(((int*)vector)+i+1) = rand();
