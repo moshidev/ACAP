@@ -35,9 +35,9 @@ static double get_cpu_time() {
 }
 
 static void assert_argc(int argc, char** argv) {
-	if (argc != 3) {
+	if (argc != 5) {
 		fprintf(stderr, txt_err_dist);
-		fprintf(stderr, "Uso: %s [# conjunto A] [# conjunto B]\n", argv[0]);
+		fprintf(stderr, "Uso: %s [num. hilos] [tam. intersección máx.] [# conjunto A] [# conjunto B]\n", argv[0]);
 		exit(1);
 	}
 }
@@ -166,14 +166,17 @@ static size_t calc_intersection_size(size_t nthreads, pair_kh_i32_t pset) {
 int main(int argc, char** argv) {
 	assert_argc(argc, argv);
 
-	size_t va_len = strtoul(argv[1], 0, 0);
-	size_t vb_len = strtoul(argv[2], 0, 0);
+	size_t nthreads = strtoul(argv[1], 0, 0);
+	size_t max_intersection_size = strtoul(argv[2], 0, 0);
+	size_t va_len = strtoul(argv[3], 0, 0);
+	size_t vb_len = strtoul(argv[4], 0, 0);
 	size_t smallest_v_len = va_len < vb_len ? va_len : vb_len;
 	size_t biggest_v_len = va_len >= vb_len ? va_len : vb_len;
 
-	assert_v_len(va_len, vb_len, argv[0], argv[1], argv[2]);
-
-	size_t nthreads = 16;
+	if (nthreads <= 0) {
+		nthreads = 1;
+	}
+	assert_v_len(va_len, vb_len, argv[0], argv[3], argv[4]);
 
 	printf("Reserva memoria...\n");
 	int32_t* va = calloc(va_len, sizeof(int32_t));
@@ -190,7 +193,7 @@ int main(int argc, char** argv) {
 			va[i] = i;
 		}
 		if (i < vb_len) {
-			vb[i] = i%39393939;
+			vb[i] = i%max_intersection_size;
 		}
 	}
 
