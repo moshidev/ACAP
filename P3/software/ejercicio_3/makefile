@@ -2,7 +2,7 @@ run: ejercicio_3_exe
 	./ejercicio_3_exe 100000000 200000000
 
 ejercicio_3_exe: ejercicio_3.c
-	gcc -lpthread $^ -o $@
+	gcc $^ -o $@ -lpthread
 
 clean:
 	rm -rf ejercicio_3_exe
