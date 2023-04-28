@@ -43,13 +43,49 @@ static khash_t(i32)* mk_kh_i32_set_from_vector(int32_t* v, size_t v_len) {
 		kh_put(i32, kh_set, v[i], &retc);
 
 		if (retc < 0) {
-			fprintf(stderr, "o.o no puedo insertar la clave %d en el hashset. ¿Por qué?\n", v[i]);
+			fprintf(stderr, "o.o no puedo insertar la llave %d en el hashset. ¿Por qué?\n", v[i]);
 			kh_destroy(i32, kh_set);
 			return 0;
 		}
 	}
 
 	return kh_set;
+}
+
+typedef struct pair_kh_i32 {
+	khash_t(i32)* a;
+	khash_t(i32)* b;
+} pair_kh_i32_t;
+
+static pair_kh_i32_t mk_pair_kh_i32_t(size_t nthreads, int32_t* va, size_t va_len, int32_t* vb, size_t vb_len) {
+	pair_kh_i32_t khset;
+
+	if (nthreads == 1) {
+		khset.a = mk_kh_i32_set_from_vector(va, va_len);
+		khset.b = mk_kh_i32_set_from_vector(vb, vb_len);
+	}
+	else {
+		/* Aquí queremos paralelizar estas dos inicializaciones */
+		khset.a = mk_kh_i32_set_from_vector(va, va_len);
+		khset.b = mk_kh_i32_set_from_vector(vb, vb_len);
+	}
+
+	if (!khset.a) {
+		fprintf(stderr, "Error fatal inicializando conjunto A.\n");
+	}
+	if (!khset.b) {
+		fprintf(stderr, "Error fatal inicializando conjunto B.\n");
+	}
+	if (!khset.a || !khset.b) {
+		exit(38);
+	}
+
+	return khset;
+}
+
+static void destroy_pair_kh_i32_t(pair_kh_i32_t p) {
+	kh_destroy(i32, p.a);
+	kh_destroy(i32, p.b);
 }
 
 int main(int argc, char** argv) {
@@ -82,31 +118,21 @@ int main(int argc, char** argv) {
 	}
 
 	printf("Inicializa hashsets...\n");
-	khash_t(i32)* hset_a = mk_kh_i32_set_from_vector(va, va_len);
-	if (!hset_a) {
-		fprintf(stderr, "Error fatal inicializando conjunto A.\n");
-		exit(39);
-	}
-	khash_t(i32)* hset_b = mk_kh_i32_set_from_vector(vb, vb_len);
-	if (!hset_b) {
-		fprintf(stderr, "Error fatal inicializando conjunto B.\n");
-		exit(39);
-	}
+	pair_kh_i32_t pset = mk_pair_kh_i32_t(1, va, va_len, vb, vb_len);
 
 	printf("Calcula el # de la intersección de los dos conjuntos...\n");
 	size_t intersect_count = 0;
-	for (khint_t it_b = kh_begin(hset_b); it_b != kh_end(hset_b); ++it_b) {
-		if (kh_exist(hset_b, it_b)) {
-			khint_t it_a = kh_get(i32, hset_a, kh_key(hset_a, it_b));
-			bool is_missing = (it_a == kh_end(hset_a));
+	for (khint_t it_b = kh_begin(pset.b); it_b != kh_end(pset.b); ++it_b) {
+		if (kh_exist(pset.b, it_b)) {
+			khint_t it_a = kh_get(i32, pset.a, kh_key(pset.b, it_b));
+			bool is_missing = (it_a == kh_end(pset.a));
 			intersect_count += is_missing ? 0 : 1;
 		}
 	}
 
 	printf("Cardinalidad encontrada: %zu\n", intersect_count);
 
-	kh_destroy(i32, hset_a);
-	kh_destroy(i32, hset_b);
+	destroy_pair_kh_i32_t(pset);
 	free(va);	//... espera, realmente hacen falta vectores para nuestro cometido? Además, esto es menos seguro que una arqueta sin tapa XD
 	free(vb);
 
