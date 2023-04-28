@@ -1,4 +1,5 @@
 #include "khash.h"
+#include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -57,6 +58,16 @@ typedef struct pair_kh_i32 {
 	khash_t(i32)* b;
 } pair_kh_i32_t;
 
+typedef struct vector_i32 {
+	int32_t* v;
+	size_t v_len;
+} vector_i32_t;
+
+static void* pthread_mk_kh_i32_set_from_vector(void* v) {
+	vector_i32_t* vector = (vector_i32_t*)v;
+	pthread_exit(mk_kh_i32_set_from_vector(vector->v, vector->v_len));
+}
+
 static pair_kh_i32_t mk_pair_kh_i32_t(size_t nthreads, int32_t* va, size_t va_len, int32_t* vb, size_t vb_len) {
 	pair_kh_i32_t khset;
 
@@ -65,9 +76,11 @@ static pair_kh_i32_t mk_pair_kh_i32_t(size_t nthreads, int32_t* va, size_t va_le
 		khset.b = mk_kh_i32_set_from_vector(vb, vb_len);
 	}
 	else {
-		/* Aquí queremos paralelizar estas dos inicializaciones */
+		pthread_t pthread;
+		vector_i32_t vector_b = {.v = vb, .v_len = vb_len};
+		pthread_create(&pthread, NULL, pthread_mk_kh_i32_set_from_vector, &vector_b);
 		khset.a = mk_kh_i32_set_from_vector(va, va_len);
-		khset.b = mk_kh_i32_set_from_vector(vb, vb_len);
+		pthread_join(pthread, (void**)&khset.b);
 	}
 
 	if (!khset.a) {
@@ -118,7 +131,7 @@ int main(int argc, char** argv) {
 	}
 
 	printf("Inicializa hashsets...\n");
-	pair_kh_i32_t pset = mk_pair_kh_i32_t(1, va, va_len, vb, vb_len);
+	pair_kh_i32_t pset = mk_pair_kh_i32_t(2, va, va_len, vb, vb_len);
 
 	printf("Calcula el # de la intersección de los dos conjuntos...\n");
 	size_t intersect_count = 0;
