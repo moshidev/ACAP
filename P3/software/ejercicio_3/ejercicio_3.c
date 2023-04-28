@@ -34,6 +34,9 @@ KHASH_SET_INIT_INT(i32)
 
 static khash_t(i32)* mk_kh_i32_set_from_vector(int32_t* v, size_t v_len) {
 	khash_t(i32)* kh_set = kh_init(i32);
+	if (!kh_set) {
+		return 0;
+	}
 
 	for (size_t i = 0; i < v_len; i++) {
 		int retc;
@@ -62,6 +65,11 @@ int main(int argc, char** argv) {
 	printf("Reserva memoria...\n");
 	int32_t* va = calloc(va_len, sizeof(int32_t));
 	int32_t* vb = calloc(vb_len, sizeof(int32_t));
+    if (!va || !vb) {
+        fprintf(stderr, "ª >w< son demasiados datos! no he podido reservar un trozo de memoria contigua tan grande!\n");
+        fprintf(stderr, "Error fatal\n");
+        exit(39);
+    }
 
 	printf("Inicializa vectores...\n");
 	for (size_t i = 0; i < biggest_v_len; i++) {
