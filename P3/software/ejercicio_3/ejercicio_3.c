@@ -215,7 +215,7 @@ int main(int argc, char** argv) {
 	printf("wallt:%f,cput:%f\n", wallt, cput);
 
 	destroy_pair_kh_i32_t(pset);
-	free(va);	//... espera, realmente hacen falta vectores para nuestro cometido? Además, esto es menos seguro que una arqueta sin tapa XD
+	free(va);
 	free(vb);
 
 	return 0;
