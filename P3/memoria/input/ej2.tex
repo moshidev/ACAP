@@ -1,0 +1,7 @@
+\section{Búsqueda del máximo de un vector usando mecanismos de exclusión mutua explícita.}
+
+Para ello modificamos el primer ejercicio de forma que ahora en vez de encontrar el máximo
+de entre los valores devueltos por las hebras, inmediatamente antes de terminar de ejecutarse
+la hebra esta actualiza atómicamente el mayor valor encontrado, mediante el uso de \texttt{pthread\_mutex\_lock}.
+
+Ejecutamos con \texttt{make run}.

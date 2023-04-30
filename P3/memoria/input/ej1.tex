@@ -1,0 +1,7 @@
+\section{Búsqueda del máximo de un vector sin uso de mecanismos de exclusión mutua explícita.}
+
+Resolvemos el problema dividiendo los trozos del vector entre las distintas hebras. Cada
+hebra almacena el máximo encontrado en su trozo asignado. Después de esperar a que todas
+las hebras terminen buscamos el máximo de entre estos valores devueltos.
+
+Ejecutamos con \texttt{make run}.

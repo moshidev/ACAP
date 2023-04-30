@@ -1,0 +1,21 @@
+\section{Cálculo del Índice de Jaccard.}
+
+Conociendo la intersección de los dos conjuntos podemos conocer este índice.
+La mejor forma que encontramos para calcular la intersección de dos conjuntos
+es la de utilizar un \textit{hashset}. Escogemos la implementación \textit{khash}.
+
+Paralelizamos la carga de los datos en dos hebras, una por conjunto. De no ser así
+ocurrirían condiciones de carrera al no ser la implementación escogida \textit{thread-safe}.
+
+Una vez tenemos los dos conjuntos en memoria, paralelizamos el tamaño de la intersección
+entre tantas hebras como queramos. Podemos hacer esto porque la lectura no modifica la
+estructura de datos.
+
+Ejecutamos con \texttt{make run}.
+
+\subsection{Trabajo futuro.}
+
+Podríamos paralelizar la carga de datos si permitiésemos que la estructura de datos fuese
+reentrante. Para ello tal vez podríamos encontrar una solución que usase un cerrojo de espera
+ocupada por cada \textit{bucket} junto a un \textit{mutex} que sincronizase el redimensionado
+de la estructura de datos cuando fuese necesario (similar al problema de los lectores-escritores).
