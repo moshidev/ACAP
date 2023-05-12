@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-target=./mock.sh
+target=./x64/Debug/P4.exe
 nblocks=256
 niter_bench=11
 img_len=$((100*1024*1024))

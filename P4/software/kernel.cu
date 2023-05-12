@@ -208,7 +208,7 @@ int main(int argc, char** argv) {
 
     /* Imprime por pantalla el tiempo medio de ejecución por benchmark */
     float gpu_avg_compute_seconds_per_iter = gpu_compute_ms / (p.niter * 1000.0f);
-    printf("Tiempo medio de ejecucion del kernel<<<%d, %d>>> sobre %zu bytes [s]: %.4f\n", p.nblocks, p.nthreads_per_block, p.img_len, gpu_avg_compute_seconds_per_iter);
+    printf("Tiempo medio de ejecucion del kernel<<<%d, %d>>> sobre %zu bytes [s]: %.8f\n", p.nblocks, p.nthreads_per_block, p.img_len, gpu_avg_compute_seconds_per_iter);
     float elapsed_ms;
     cudaEventElapsedTime(&elapsed_ms, global_start, global_end);
     float gpu_global_compute_seconds = elapsed_ms / 1000.0f;

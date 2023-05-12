@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-target=./mock.sh
+target=./x64/Debug/P4.exe
 nblocks=256
 nthreads_per_block=256
 niter_bench=11
@@ -20,8 +20,8 @@ do
 	tiempo_cpu_s=`echo "$cpu_s + $tiempo_cpu_s" | bc`
 	tiempo_con_transferencia_s=`echo "$gpu_transfer_s + $tiempo_con_transferencia_s" | bc`
 done
-tiempo_cpu_s="0"`echo "scale=4; $tiempo_cpu_s / $niter_bench" | bc -l`
-tiempo_con_transferencia_s="0"`echo "scale=4; $tiempo_cpu_s / $niter_bench" | bc -l`
+tiempo_cpu_s="0"`echo "scale=8; $tiempo_cpu_s / $niter_bench" | bc -l`
+tiempo_con_transferencia_s="0"`echo "scale=8; $tiempo_cpu_s / $niter_bench" | bc -l`
 
 echo tiempo_cpu_s,tiempo_medio_gpu_s,tiempo_con_transferencia_s > $fout
 echo $tiempo_cpu_s,$tiempo_medio_gpu_s,$tiempo_con_transferencia_s >> $fout
