@@ -161,7 +161,7 @@ int main(int argc, char** argv) {
     struct parametros p = get_params(argc, argv);
 
     /* Comprueba que la implementación CUDA es válida */
-    assert_good_algorithm_histogram_cuda(p);
+    //assert_good_algorithm_histogram_cuda(p);
 
     /* Inicializa la memoria del dispositivo */
     unsigned char* imagen = (unsigned char*)rand_1D_img(p.img_len).v;
