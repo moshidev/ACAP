@@ -50,7 +50,7 @@ function spinner() {
 
 target=./x64/Debug/P4.exe
 nblocks=3060
-nthreads_per_block=512
+nthreads_per_block=256
 niter_bench=11
 img_len=$((100*1024*1024))
 fout=experimento_3.csv
