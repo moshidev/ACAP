@@ -81,7 +81,6 @@ __global__ void kernelHistograma(unsigned char* imagen, size_t size, unsigned in
     __shared__ unsigned int lhisto[IMG_DEPTH];
     for (unsigned t = threadIdx.x; t < IMG_DEPTH; t += blockDim.x) {
         lhisto[t] = 0;
-        t += blockDim.x;
     }
 
     size_t i = threadIdx.x + blockIdx.x * blockDim.x;
