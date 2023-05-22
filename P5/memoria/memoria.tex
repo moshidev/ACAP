@@ -1,0 +1,37 @@
+% Adapted from Atanasio Rubio Gil's https://gitlab.com/Groctel/aqademia/-/blob/main/demo/demo_aqademia.tex
+
+\documentclass[10pt, a4paper]{aqademic}
+
+% Language and input encoding
+
+\usepackage[spanish]{babel}
+
+% Document settings
+
+\usepackage[type=CC, modifier=by-nc-sa, version=4.0]{doclicense}
+\usepackage{graphicx}
+	\graphicspath{{img/}}
+\usepackage{multirow}
+\usepackage{adjustbox}
+\usepackage{float}
+
+\author{Daniel Pedrosa Montes}
+\title{Arquitectura y Computación de Altas Prestaciones}
+
+% Document composition
+
+\begin{document}
+
+\AqMaketitle[%
+	cover    = identidad_ugr,
+    subtitle = {{Ejercicios en CUDA}},
+	url      = {{https://github.com/moshidev}},
+    date     = {{mayo del 2023}}
+]
+
+\tableofcontents
+
+\chapter{Resolución de los ejercicios propuestos.}
+    \input{}
+
+\end{document}
