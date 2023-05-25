@@ -46,7 +46,7 @@ y con una interfaz de memoria de 192 bits, funcionando a $1.75GHz$ en frecuencia
 
 Para una \textit{RTX 2060} tenemos que
 
-$$ BW_{Theorical} = 2 \cdot 14 \cdot 10^{9} \ \frac{transferencias}{segundo} \cdot 192 \ \frac{bits}{transferencia} \cdot \frac{1 \cdot byte}{ 8 \cdot bits} = 672 \ \frac{GB}{s} $$
+$$ BW_{Theorical} = 336 \ \frac{GB}{s} $$
 
 si tomamos como la velocidad de la memoria la efectiva.
 
@@ -56,7 +56,9 @@ $$ BW_{Effective} = 148.271504 \ \frac{GB}{s} $$
 
 \subsection{Capacidad de cómputo.}
 
-Desconocemos el máximo de operaciones en coma flotante por unidad de tiempo teórico para la \textit{RTX 2060}, pero calculamos el efectivo de la siguiente forma.
+Desconocemos el máximo teórico de operaciones en coma flotante por unidad de tiempo para la \textit{RTX 2060}, pero calculamos el efectivo de la siguiente forma.
 
 $$ GFLOPS = \frac{2 \cdot N}{t \cdot 10^{9}} = 2.471192 \ GFLOPS $$
+
+Donde $N$ es el número de operaciones en coma flotante y $t$ el tiempo transcurrido en segundos.
 
