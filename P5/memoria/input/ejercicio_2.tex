@@ -1,6 +1,6 @@
 \section{Cálculo del máximo de un vector.}
 
-Aplicamos el conocimiento que encontramos en \url{https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf}.
+Aplicamos parte del conocimiento que encontramos en \url{https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf}.
 
 Nuestra estrategia al desarrollar el kernel es la siguiente.
 A nivel de \textit{grid} vamos, por cada hebra, a ir buscando
@@ -20,7 +20,7 @@ de bloque de 3072, por lo que establecemos ese el tamaño de bloque para utiliza
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=8.5cm]{reduccion.png}
+    \includegraphics[width=12cm]{reduccion.png}
     \caption{Reducción paralela con direccionamiento secuencial para reducir un vector con la operación suma.
         Utilizamos esta misma estrategia en nuestro código.
         Extraído de \url{https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf}.}
