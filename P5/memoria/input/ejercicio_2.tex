@@ -51,7 +51,7 @@ Descubrimos que, por alguna razón que no llegamos a investigar, la aceleración
 Potencialmente nuestro \textit{kernel} podría mejorarse en gran medida cambiando el enfoque algorítmico y de transferencias de memoria.
 
 Como alternativa podemos utilizar la librería \href{https://github.com/NVIDIA/thrust}{Thrust}, la cual junto a otras muchas utilidades
-incluye un \textit{wrapper} para un algoritmo desarrollado por \textit{NVIDIA} para sus \textit{GPUs} para encontrar el máximo de un vector.
+incluye un \textit{wrapper} para un algoritmo desarrollado por \textit{NVIDIA} para sus GPUs para encontrar el máximo de un vector.
 
 Si el código no fuese parte de otro algoritmo que se ejecutase en la GPU, sino que fuese un acelerador para la CPU, nos interesaría investigar
 otras opciones como ciertas operaciones SIMD de la arquitectura x86 (o equivalentes según requiramos) como puede ser
