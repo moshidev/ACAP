@@ -135,7 +135,18 @@ void memExit39(void) {
 }
 
 __global__ void kernelMatrixMul(double* va, double* vb, size_t n, size_t m, size_t l, double* dst) {
+    size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 
+    while (i < n) {
+        for (size_t j = 0; j < l; j++) {
+            double sum = 0.0;
+            for (size_t w = 0; w < m; w++) {
+                sum += va[i * m + w] * vb[w * l + j];
+            }
+            dst[i * l + j] = sum;
+        }
+        i += blockDim.x * gridDim.x;
+    }
 }
 
 int main(int argc, char** argv) {
@@ -143,8 +154,8 @@ int main(int argc, char** argv) {
 
     /* Inicializamos dos matrices */
     matrix_t A, B;
-    int errA = matrix_alloc(3, 3, &A);
-    int errB = matrix_alloc(3, 3, &B);
+    int errA = matrix_alloc(1000, 500, &A);
+    int errB = matrix_alloc(500, 700, &B);
     if (errA != 0 || errB != 0) {
         memExit39();
     }
@@ -152,6 +163,8 @@ int main(int argc, char** argv) {
     //randomize(B.v, B.n*B.m);
     for (size_t i = 0; i < A.n*A.m; i++) {
         A.v[i] = i%5+1;
+    }
+    for (size_t i = 0; i < B.n * B.m; i++) {
         B.v[i] = i%5+1;
     }
 
@@ -167,19 +180,54 @@ int main(int argc, char** argv) {
         matrix_print(A);
         printf("Matriz B:\n");
         matrix_print(B);
-        printf("Producto de ambas matrices:\n");
+        printf("Producto de ambas matrices (CPU):\n");
         matrix_print(productAB);
     }
     cpu_s = get_wall_time() - cpu_s;
     printf("t_cpu_s:%.8f\n", cpu_s);
 
+    /* Monitoriza */
+    cudaEvent_t global_start, global_end;
+    cudaEventCreate(&global_start);
+    cudaEventCreate(&global_end);
+    cudaEventRecord(global_start);
+
     /* Multiplicamos ambas matrices en la GPU */
+    double *dev_va, *dev_vb, *dev_vdst;
+    int nthreads = 512, nblocks = 3070;
+    cudaMalloc(&dev_va, A.n * A.m * sizeof(double));
+    cudaMalloc(&dev_vb, B.n * B.m * sizeof(double));
+    cudaMalloc(&dev_vdst, A.n * B.m * sizeof(double));
+
+    cudaMemcpy(dev_va, A.v, A.n * A.m * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(dev_vb, B.v, B.n * B.m * sizeof(double), cudaMemcpyHostToDevice);
+    kernelMatrixMul << <nblocks, nthreads >> > (dev_va, dev_vb, A.n, A.m, B.m, dev_vdst);
+    matrix_t productAB_GPU;
+    matrix_alloc(A.n, B.m, &productAB_GPU);
+    cudaMemcpy(productAB_GPU.v, dev_vdst, A.n * B.m * sizeof(double), cudaMemcpyDeviceToHost);
+
+    /* Monitoriza */
+    cudaEventRecord(global_end);
+    cudaEventSynchronize(global_end);
+    float gpu_ms;
+    cudaEventElapsedTime(&gpu_ms, global_start, global_end);
+    printf("t_gpu_s:%.8f\n", gpu_ms/1000.0f);
+
+    if (productAB_GPU.n * productAB_GPU.m < 9 * 9) {
+        printf("Producto de ambas matrices (GPU):\n");
+        matrix_print(productAB_GPU);
+    }
+    assert(memcmp(productAB.v, productAB_GPU.v, productAB.n * productAB.m * sizeof(double)) == 0);
 
 
     /* Destruye los recursos utilizados */
     matrix_destroy(&A);
     matrix_destroy(&B);
     matrix_destroy(&productAB);
+    matrix_destroy(&productAB_GPU);
+    cudaFree(dev_va);
+    cudaFree(dev_vb);
+    cudaFree(dev_vdst);
 
     return 0;
 }
