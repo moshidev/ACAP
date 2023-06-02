@@ -135,17 +135,19 @@ void memExit39(void) {
 }
 
 __global__ void kernelMatrixMul(double* va, double* vb, size_t n, size_t m, size_t l, double* dst) {
-    size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+    size_t i = blockIdx.x;
 
     while (i < n) {
-        for (size_t j = 0; j < l; j++) {
+        size_t j = threadIdx.x;
+        while (j < l) {
             double sum = 0.0;
             for (size_t w = 0; w < m; w++) {
                 sum += va[i * m + w] * vb[w * l + j];
             }
             dst[i * l + j] = sum;
+            j += blockDim.x;
         }
-        i += blockDim.x * gridDim.x;
+        i += gridDim.x;
     }
 }
 
